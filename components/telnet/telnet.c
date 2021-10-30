@@ -23,6 +23,10 @@
 
 #include "libtelnet.h"
 #include "esp_log.h"
+#include "msg_buffer.h"
+
+static QueueHandle_t txQ;
+static QueueHandle_t rxQ;
 
 #define SOCKET int
 #define MAX_USERS 64
@@ -76,11 +80,29 @@ static void linebuffer_push(char *buffer, size_t size, int *linepos,
 	}
 }
 
+static void _send_uart(const char *from, const char *msg) 
+{
+    MsgBuffer msgBuff;
+    msgBuff.len = strlen(msg);
+    if(msgBuff.len == 0)
+    {
+        return;
+    }
+
+    msgBuff.pMessage = (uint8_t*) malloc(msgBuff.len);
+    memcpy((char*)msgBuff.pMessage, msg, msgBuff.len);
+
+    if(pdFALSE == xQueueSendToBack(txQ, &msgBuff, 10))
+    {
+        free(msgBuff.pMessage);
+    }
+}
+
 static void _message(const char *from, const char *msg) {
 	int i;
 	for (i = 0; i != MAX_USERS; ++i) {
 		if (users[i].sock != -1) {
-			telnet_printf(users[i].telnet, "%s: %s\n", from, msg);
+			telnet_printf(users[i].telnet, "%s\n", msg);
 		}
 	}
 }
@@ -151,7 +173,7 @@ static void _online(const char *line, size_t overflow, void *ud) {
 	}
 
 	/* just a message -- send to all users */
-	_message(user->name, line);
+	_send_uart(user->name, line);
 }
 
 static void _input(struct user_t *user, const char *buffer,
@@ -197,6 +219,20 @@ static void _event_handler(telnet_t *telnet, telnet_event_t *ev,
 		/* ignore */
 		break;
 	}
+}
+
+static void rcv_uart(void * param)
+{
+    MsgBuffer msg = {};
+    while(1)
+    {
+        if(pdTRUE == xQueueReceive(rxQ, &msg, 100))
+        {
+            msg.pMessage[msg.len] = 0;
+            _message("uart", (char*)msg.pMessage);
+            free(msg.pMessage);
+        }
+    }
 }
 
 static void telnet(void * param) 
@@ -340,7 +376,8 @@ static void telnet(void * param)
 
 void start_telnet(QueueHandle_t _txQ, QueueHandle_t _rxQ)
 {
-   // txQ = _txQ;
-   // rxQ = _rxQ;
+    txQ = _txQ;
+    rxQ = _rxQ;
     xTaskCreate(telnet, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
+    xTaskCreate(rcv_uart, "rcv_uart", 4096, (void*)AF_INET, 5, NULL);
 }

@@ -45,18 +45,21 @@ static void tx_task(void *arg)
 {
     static const char *TX_TASK_TAG = "TX_TASK";
     esp_log_level_set(TX_TASK_TAG, ESP_LOG_INFO);
+
+    ESP_LOGI(TX_TASK_TAG, "tx_task start Q %X", (unsigned int)txQ);
+
     while (1)
     {
         MsgBuffer msg;
-        if(xQueueReceive(txQ, &msg, 1000 / portTICK_RATE_MS))
+        if(xQueueReceive(txQ, &msg, 1000 / portTICK_RATE_MS) == pdTRUE)
         {
-            if(msg.len > 0 && msg.pMessge)
+            if(msg.len > 0 && msg.pMessage)
             {
-                uart_write_bytes(UART_NUM_2, msg.pMessge, msg.len);
+                uart_write_bytes(UART_NUM_2, msg.pMessage, msg.len);
             }
-            if(msg.pMessge)
+            if(msg.pMessage)
             {
-                free(msg.pMessge);
+                free(msg.pMessage);
             }
         }
     }
@@ -66,29 +69,32 @@ static void rx_task(void *arg)
 {
     static const char *RX_TASK_TAG = "RX_TASK";
     esp_log_level_set(RX_TASK_TAG, ESP_LOG_INFO);
+
+    ESP_LOGI(RX_TASK_TAG, "rx_task start Q %X", (unsigned int)rxQ);
+
     MsgBuffer msg = {};
     while (1) 
     {
-        if(msg.pMessge == NULL)
+        if(msg.pMessage == NULL)
         {
-            msg.pMessge = (uint8_t*) malloc(RX_BUF_SIZE+1);
+            msg.pMessage = (uint8_t*) malloc(RX_BUF_SIZE+1);
         }
-        const int rxBytes = uart_read_bytes(UART_NUM_2, msg.pMessge, RX_BUF_SIZE, 1000 / portTICK_RATE_MS);
+        const int rxBytes = uart_read_bytes(UART_NUM_2, msg.pMessage, RX_BUF_SIZE, 10);
         if(rxBytes)
         {
             msg.len = rxBytes;
             BaseType_t result = xQueueSendToBack(rxQ, &msg, 10);
             if(errQUEUE_FULL == result)
             {
-                free(msg.pMessge);
+                free(msg.pMessage);
             }
-            msg.pMessge = NULL;
+            msg.pMessage = NULL;
         }
     }
 
-    if(msg.pMessge)
+    if(msg.pMessage)
     {
-        free(msg.pMessge);
+        free(msg.pMessage);
     }
 }
 

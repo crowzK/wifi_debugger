@@ -174,6 +174,6 @@ void app_main(void)
     uartTx = xQueueCreate(100, sizeof(MsgBuffer));
     uartRx = xQueueCreate(100, sizeof(MsgBuffer));
 
-    start_telnet(uartRx, uartTx);
+    start_telnet(uartTx, uartRx);
     start_uart_service(uartTx, uartRx);
 }

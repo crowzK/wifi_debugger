@@ -9,7 +9,8 @@
   "files.associations": {
     "task.h": "c",
     "freertos.h": "c",
-    "telnet.h": "c"
+    "telnet.h": "c",
+    "*.inc": "c"
   },
   "idf.flashType": "UART"
 }
