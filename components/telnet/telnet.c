@@ -161,17 +161,6 @@ static void _online(const char *line, size_t overflow, void *ud) {
 		return;
 	}
 
-	/* if line is "quit" then, well, quit */
-	if (strcmp(line, "quit") == 0) {
-		close(user->sock);
-		user->sock = -1;
-		_message(user->name, "** HAS QUIT **");
-		free(user->name);
-		user->name = 0;
-		telnet_free(user->telnet);
-		return;
-	}
-
 	/* just a message -- send to all users */
 	_send_uart(user->name, line);
 }
