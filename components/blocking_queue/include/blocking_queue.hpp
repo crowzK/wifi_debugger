@@ -25,9 +25,11 @@ public:
     bool push(const T& data, const std::chrono::milliseconds& waitTime)
     {
         std::unique_lock<std::mutex> lock(mutex);
-        while(queue.size() == capacity)
+
+        if(queue.size() == capacity)
         {
-            if(full.wait_for(lock, waitTime) == std::cv_status::timeout)
+            full.wait_for(lock, waitTime);
+            if(queue.size() == capacity)
             {
                 return false;
             }
@@ -41,9 +43,10 @@ public:
     bool pop(T& out, const std::chrono::milliseconds& waitTime)
     {
         std::unique_lock<std::mutex> lock(mutex);
-        while(queue.empty())
-        {
-            if(empty.wait_for(lock, waitTime) == std::cv_status::timeout)
+        if(queue.empty())
+        { 
+            empty.wait_for(lock, waitTime);
+            if(queue.empty())
             {
                 return false;
             }
