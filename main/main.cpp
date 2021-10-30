@@ -19,8 +19,8 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#include "telnet.h"
-#include "uart.h"
+#include "telnet.hpp"
+#include "uart.hpp"
 #include "msg_buffer.h"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
@@ -102,13 +102,14 @@ void wifi_init_sta(void)
         {
             .sta = 
             {
-                .ssid = EXAMPLE_ESP_WIFI_SSID,
-                .password = EXAMPLE_ESP_WIFI_PASS,
+                {.ssid = EXAMPLE_ESP_WIFI_SSID},
+                {.password = EXAMPLE_ESP_WIFI_PASS},
+                .scan_method = WIFI_FAST_SCAN,
+                .sort_method = WIFI_CONNECT_AP_BY_SIGNAL,
                 /* Setting a password implies station will connect to all security modes including WEP/WPA.
                 * However these modes are deprecated and not advisable to be used. Incase your Access point
                 * doesn't support WPA2, these mode can be enabled by commenting below line */
-	            .threshold.authmode = WIFI_AUTH_WPA2_PSK,
-
+	            .threshold{.rssi = 0, .authmode = WIFI_AUTH_WPA2_PSK},
                 .pmf_cfg = 
                 {
                 .capable = true,
@@ -158,7 +159,7 @@ void wifi_init_sta(void)
 static QueueHandle_t uartTx;
 static QueueHandle_t uartRx;
 
-void app_main(void)
+extern "C" void app_main(void)
 {
     //Initialize NVS
     esp_err_t ret = nvs_flash_init();

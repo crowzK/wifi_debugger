@@ -25,8 +25,8 @@
 #include "esp_log.h"
 #include "msg_buffer.h"
 
-static QueueHandle_t txQ;
-static QueueHandle_t rxQ;
+static QueueHandle_t uartTxQ ;
+static QueueHandle_t uartRxQ ;
 
 #define SOCKET int
 #define MAX_USERS 64
@@ -92,7 +92,7 @@ static void _send_uart(const char *from, const char *msg)
     msgBuff.pMessage = (uint8_t*) malloc(msgBuff.len);
     memcpy((char*)msgBuff.pMessage, msg, msgBuff.len);
 
-    if(pdFALSE == xQueueSendToBack(txQ, &msgBuff, 10))
+    if(pdFALSE == xQueueSendToBack(uartTxQ , &msgBuff, 10))
     {
         free(msgBuff.pMessage);
     }
@@ -215,7 +215,7 @@ static void rcv_uart(void * param)
     MsgBuffer msg = {};
     while(1)
     {
-        if(pdTRUE == xQueueReceive(rxQ, &msg, 100))
+        if(pdTRUE == xQueueReceive(uartRxQ , &msg, 100))
         {
             msg.pMessage[msg.len] = 0;
             _message("uart", (char*)msg.pMessage);
@@ -365,8 +365,8 @@ static void telnet(void * param)
 
 void start_telnet(QueueHandle_t _txQ, QueueHandle_t _rxQ)
 {
-    txQ = _txQ;
-    rxQ = _rxQ;
+    uartTxQ  = _txQ;
+    uartRxQ  = _rxQ;
     xTaskCreate(telnet, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
     xTaskCreate(rcv_uart, "rcv_uart", 4096, (void*)AF_INET, 5, NULL);
 }

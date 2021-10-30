@@ -14,7 +14,7 @@
 #include "driver/uart.h"
 #include "string.h"
 #include "driver/gpio.h"
-#include "uart.h"
+#include "uart.hpp"
 #include "../../components/telnet/include/msg_buffer.h"
 
 static const int RX_BUF_SIZE = 1024;
