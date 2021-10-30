@@ -35,6 +35,7 @@ UartService::UartService(const char* taskName) :
 
 UartService::~UartService()
 {
+    ESP_LOGI(cName, "terminate");
     stop();
 }
 
@@ -73,12 +74,12 @@ UartTx::UartTx():
 void UartTx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
 {
     esp_log_level_set(cName, ESP_LOG_INFO);
-    ESP_LOGI(cName, "tx_task start Q");
+    ESP_LOGI(cName, "start");
 
     while(run)
     {
         std::vector<uint8_t> msg;
-        if(queue.pop(msg, std::chrono::milliseconds(10)) and msg.size())
+        if(queue.pop(msg, std::chrono::milliseconds(1000)) and msg.size())
         {
             uart_write_bytes(UART_NUM_2, msg.data(), msg.size());
         }
@@ -97,19 +98,16 @@ UartRx::UartRx():
 void UartRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
 {
     esp_log_level_set(cName, ESP_LOG_INFO);
-    ESP_LOGI(cName, "rx_task start Q");
+    ESP_LOGI(cName, "start");
 
-    while (1) 
+    while (run) 
     {
         std::vector<uint8_t> rcvBuffer;
         rcvBuffer.resize(RX_BUF_SIZE + 1);
         const int rxBytes = uart_read_bytes(UART_NUM_2, rcvBuffer.data(), RX_BUF_SIZE, 10);
         if(rxBytes)
         {
-            if(not queue.isFull())
-            {
-                queue.push(rcvBuffer, std::chrono::milliseconds(10));
-            }
+            queue.push(rcvBuffer, std::chrono::milliseconds(100));
         }
     }
 }

@@ -96,7 +96,7 @@ static void _send_uart(const char *from, const char *msg)
     memcpy(tx.data(), msg, len);
 	tx[len - 2] = '\r';
 	tx[len - 1] = '\n';
-	uartTx.push(tx, std::chrono::milliseconds(10));
+	uartTx.push(tx, std::chrono::milliseconds(100));
 }
 
 static void _message(const char *from, const char *msg) 
