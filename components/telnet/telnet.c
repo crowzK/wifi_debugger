@@ -96,14 +96,12 @@ static void _send(SOCKET sock, const char *buffer, size_t size) {
 	while (size > 0) {
 		if ((rs = send(sock, buffer, (int)size, 0)) == -1) {
 			if (errno != EINTR && errno != ECONNRESET) {
-				fprintf(stderr, "send() failed: %s\n", strerror(errno));
-				exit(1);
+				ESP_LOGE(TAG, "send() failed: %s\n", strerror(errno));
 			} else {
 				return;
 			}
 		} else if (rs == 0) {
-			fprintf(stderr, "send() unexpectedly returned 0\n");
-			exit(1);
+			ESP_LOGE(TAG, "send() unexpectedly returned 0\n");
 		}
 
 		/* update pointer and size to see if we've got more to send */
@@ -172,8 +170,8 @@ static void _event_handler(telnet_t *telnet, telnet_event_t *ev,
 	/* data received */
 	case TELNET_EV_DATA:
 		_input(user, ev->data.buffer, ev->data.size);
-					telnet_negotiate(telnet, TELNET_WONT, TELNET_TELOPT_ECHO);
-			telnet_negotiate(telnet, TELNET_WILL, TELNET_TELOPT_ECHO);
+		telnet_negotiate(telnet, TELNET_WONT, TELNET_TELOPT_ECHO);
+		telnet_negotiate(telnet, TELNET_WILL, TELNET_TELOPT_ECHO);
 		break;
 	/* data must be sent */
 	case TELNET_EV_SEND:
@@ -225,7 +223,7 @@ static void telnet(void * param)
 
 	/* create listening socket */
 	if ((listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
-		fprintf(stderr, "socket() failed: %s\n", strerror(errno));
+		ESP_LOGE(TAG, "socket() failed: %s\n", strerror(errno));
         return;
 	}
 
@@ -239,14 +237,14 @@ static void telnet(void * param)
 	addr.sin_addr.s_addr = INADDR_ANY;
 	addr.sin_port = htons(listen_port);
 	if (bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
-		fprintf(stderr, "bind() failed: %s\n", strerror(errno));
+		ESP_LOGE(TAG, "bind() failed: %s\n", strerror(errno));
 		close(listen_sock);
         return;
 	}
 
 	/* listen for clients */
 	if (listen(listen_sock, 5) == -1) {
-		fprintf(stderr, "listen() failed: %s\n", strerror(errno));
+		ESP_LOGE(TAG, "listen() failed: %s\n", strerror(errno));
 		close(listen_sock);
         return;
 	}
@@ -273,7 +271,7 @@ static void telnet(void * param)
 		/* poll */
 		rs = poll(pfd, MAX_USERS + 1, -1);
 		if (rs == -1 && errno != EINTR) {
-			fprintf(stderr, "poll() failed: %s\n", strerror(errno));
+			ESP_LOGE(TAG, "poll() failed: %s\n", strerror(errno));
 			close(listen_sock);
 			return;
 		}
@@ -284,7 +282,7 @@ static void telnet(void * param)
 			addrlen = sizeof(addr);
 			if ((client_sock = accept(listen_sock, (struct sockaddr *)&addr,
 					&addrlen)) == -1) {
-				fprintf(stderr, "accept() failed: %s\n", strerror(errno));
+				ESP_LOGE(TAG, "accept() failed: %s\n", strerror(errno));
 			    return;
 			}
 
@@ -331,7 +329,7 @@ static void telnet(void * param)
 					}
 					telnet_free(users[i].telnet);
 				} else if (errno != EINTR) {
-					fprintf(stderr, "recv(client) failed: %s\n",
+					ESP_LOGE(TAG, "recv(client) failed: %s\n",
 							strerror(errno));
 					exit(1);
 				}
