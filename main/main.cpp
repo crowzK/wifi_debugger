@@ -21,7 +21,7 @@
 
 #include "telnet.hpp"
 #include "uart.hpp"
-#include "msg_buffer.h"
+#include "blocking_queue.hpp"
 
 /* The examples use WiFi configuration that you can set via project configuration menu
 
@@ -156,9 +156,6 @@ void wifi_init_sta(void)
     vEventGroupDelete(s_wifi_event_group);
 }
 
-static QueueHandle_t uartTx;
-static QueueHandle_t uartRx;
-
 extern "C" void app_main(void)
 {
     //Initialize NVS
@@ -172,9 +169,5 @@ extern "C" void app_main(void)
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
     wifi_init_sta();
 
-    uartTx = xQueueCreate(100, sizeof(MsgBuffer));
-    uartRx = xQueueCreate(100, sizeof(MsgBuffer));
-
-    start_telnet(uartTx, uartRx);
-    start_uart_service(uartTx, uartRx);
+    start_telnet();
 }

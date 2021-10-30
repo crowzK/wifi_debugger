@@ -22,24 +22,27 @@
 #include <ctype.h>
 
 #include "libtelnet.h"
+#include "telnet.hpp"
 #include "esp_log.h"
-#include "msg_buffer.h"
-
-static QueueHandle_t uartTxQ ;
-static QueueHandle_t uartRxQ ;
+#include "uart.hpp"
 
 #define SOCKET int
 #define MAX_USERS 64
 #define LINEBUFFER_SIZE 256
 
+static BlockingQueue<std::vector<uint8_t>> uartTx(10);
+static BlockingQueue<std::vector<uint8_t>> uartRx(10);
+
 static const char *TAG = "telnet";
 
-static const telnet_telopt_t telopts[] = {
+static const telnet_telopt_t telopts[] = 
+{
 	{ TELNET_TELOPT_COMPRESS2,	TELNET_WILL, TELNET_DONT },
 	{ -1, 0, 0 }
 };
 
-struct user_t {
+struct user_t 
+{
 	char *name;
 	SOCKET sock;
 	telnet_t *telnet;
@@ -51,7 +54,8 @@ static struct user_t users[MAX_USERS];
 
 static void linebuffer_push(char *buffer, size_t size, int *linepos,
 		char ch, void (*cb)(const char *line, size_t overflow, void *ud),
-		void *ud) {
+		void *ud) 
+{
 
 	/* CRLF -- line terminator */
 	if (ch == '\n' && *linepos > 0 && buffer[*linepos - 1] == '\r') {
@@ -82,32 +86,32 @@ static void linebuffer_push(char *buffer, size_t size, int *linepos,
 
 static void _send_uart(const char *from, const char *msg) 
 {
-    MsgBuffer msgBuff;
-    msgBuff.len = strlen(msg);
-    if(msgBuff.len == 0)
+    uint32_t len = strlen(msg) + 2;
+    if(len == 0)
     {
         return;
     }
-
-    msgBuff.pMessage = (uint8_t*) malloc(msgBuff.len);
-    memcpy((char*)msgBuff.pMessage, msg, msgBuff.len);
-
-    if(pdFALSE == xQueueSendToBack(uartTxQ , &msgBuff, 10))
-    {
-        free(msgBuff.pMessage);
-    }
+	std::vector<uint8_t> tx;
+	tx.resize(len);
+    memcpy(tx.data(), msg, len);
+	tx[len - 2] = '\r';
+	tx[len - 1] = '\n';
+	uartTx.push(tx, std::chrono::milliseconds(10));
 }
 
-static void _message(const char *from, const char *msg) {
+static void _message(const char *from, const char *msg) 
+{
 	int i;
-	for (i = 0; i != MAX_USERS; ++i) {
+	for (i = 0; i != MAX_USERS; ++i) 
+	{
 		if (users[i].sock != -1) {
 			telnet_printf(users[i].telnet, "%s\n", msg);
 		}
 	}
 }
 
-static void _send(SOCKET sock, const char *buffer, size_t size) {
+static void _send(SOCKET sock, const char *buffer, size_t size) 
+{
 	int rs;
 
 	/* ignore on invalid socket */
@@ -115,14 +119,21 @@ static void _send(SOCKET sock, const char *buffer, size_t size) {
 		return;
 
 	/* send data */
-	while (size > 0) {
-		if ((rs = send(sock, buffer, (int)size, 0)) == -1) {
-			if (errno != EINTR && errno != ECONNRESET) {
+	while (size > 0) 
+	{
+		if ((rs = send(sock, buffer, (int)size, 0)) == -1) 
+		{
+			if (errno != EINTR && errno != ECONNRESET) 
+			{
 				ESP_LOGE(TAG, "send() failed: %s\n", strerror(errno));
-			} else {
+			} 
+			else 
+			{
 				return;
 			}
-		} else if (rs == 0) {
+		} 
+		else if (rs == 0) 
+		{
 			ESP_LOGE(TAG, "send() unexpectedly returned 0\n");
 		}
 
@@ -133,7 +144,8 @@ static void _send(SOCKET sock, const char *buffer, size_t size) {
 }
 
 /* process input line */
-static void _online(const char *line, size_t overflow, void *ud) {
+static void _online(const char *line, size_t overflow, void *ud) 
+{
 	struct user_t *user = (struct user_t*)ud;
 	int i;
 
@@ -166,15 +178,19 @@ static void _online(const char *line, size_t overflow, void *ud) {
 }
 
 static void _input(struct user_t *user, const char *buffer,
-		size_t size) {
+		size_t size) 
+{
 	unsigned int i;
 	for (i = 0; user->sock != -1 && i != size; ++i)
+	{
 		linebuffer_push(user->linebuf, sizeof(user->linebuf), &user->linepos,
 				(char)buffer[i], _online, user);
+	}
 }
 
 static void _event_handler(telnet_t *telnet, telnet_event_t *ev,
-		void *user_data) {
+		void *user_data) 
+{
 	struct user_t *user = (struct user_t*)user_data;
 
 	switch (ev->type) {
@@ -212,15 +228,19 @@ static void _event_handler(telnet_t *telnet, telnet_event_t *ev,
 
 static void rcv_uart(void * param)
 {
-    MsgBuffer msg = {};
     while(1)
     {
-        if(pdTRUE == xQueueReceive(uartRxQ , &msg, 100))
-        {
-            msg.pMessage[msg.len] = 0;
-            _message("uart", (char*)msg.pMessage);
-            free(msg.pMessage);
-        }
+		std::vector<uint8_t> rx;
+		if(uartRx.pop(rx, std::chrono::milliseconds(100)) and rx.size())
+		{
+			for (int i = 0; i != MAX_USERS; ++i) 
+			{
+				if (users[i].sock != -1) 
+				{
+					telnet_send(users[i].telnet, (char*)rx.data(), rx.size());
+				}
+			}
+		}
     }
 }
 
@@ -240,14 +260,18 @@ static void telnet(void * param)
 	/* initialize data structures */
 	memset(&pfd, 0, sizeof(pfd));
 	memset(users, 0, sizeof(users));
+
 	for (i = 0; i != MAX_USERS; ++i)
+	{
 		users[i].sock = -1;
+	}
 
 	/* parse listening port */
 	listen_port = 23;
 
 	/* create listening socket */
-	if ((listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
+	if ((listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
+	{
 		ESP_LOGE(TAG, "socket() failed: %s\n", strerror(errno));
         return;
 	}
@@ -261,14 +285,16 @@ static void telnet(void * param)
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
 	addr.sin_port = htons(listen_port);
-	if (bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) {
+	if (bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) 
+	{
 		ESP_LOGE(TAG, "bind() failed: %s\n", strerror(errno));
 		close(listen_sock);
         return;
 	}
 
 	/* listen for clients */
-	if (listen(listen_sock, 5) == -1) {
+	if (listen(listen_sock, 5) == -1) 
+	{
 		ESP_LOGE(TAG, "listen() failed: %s\n", strerror(errno));
 		close(listen_sock);
         return;
@@ -281,9 +307,11 @@ static void telnet(void * param)
 	pfd[MAX_USERS].events = POLLIN;
 
 	/* loop for ever */
-	for (;;) {
+	for (;;) 
+	{
 		/* prepare for poll */
-		for (i = 0; i != MAX_USERS; ++i) {
+		for (i = 0; i != MAX_USERS; ++i) 
+		{
 			if (users[i].sock != -1) {
 				pfd[i].fd = users[i].sock;
 				pfd[i].events = POLLIN;
@@ -295,14 +323,16 @@ static void telnet(void * param)
 
 		/* poll */
 		rs = poll(pfd, MAX_USERS + 1, -1);
-		if (rs == -1 && errno != EINTR) {
+		if (rs == -1 && errno != EINTR) 
+		{
 			ESP_LOGE(TAG, "poll() failed: %s\n", strerror(errno));
 			close(listen_sock);
 			return;
 		}
 
 		/* new connection */
-		if (pfd[MAX_USERS].revents & (POLLIN | POLLERR | POLLHUP)) {
+		if (pfd[MAX_USERS].revents & (POLLIN | POLLERR | POLLHUP)) 
+		{
 			/* acept the sock */
 			addrlen = sizeof(addr);
 			if ((client_sock = accept(listen_sock, (struct sockaddr *)&addr,
@@ -315,9 +345,14 @@ static void telnet(void * param)
 
 			/* find a free user */
 			for (i = 0; i != MAX_USERS; ++i)
+			{
 				if (users[i].sock == -1)
+				{
 					break;
-			if (i == MAX_USERS) {
+				}
+			}
+			if (i == MAX_USERS) 
+			{
 				ESP_LOGI(TAG, "  rejected (too many users)\n");
 				_send(client_sock, "Too many users.\r\n", 14);
 				close(client_sock);
@@ -335,15 +370,22 @@ static void telnet(void * param)
 		}
 
 		/* read from client */
-		for (i = 0; i != MAX_USERS; ++i) {
+		for (i = 0; i != MAX_USERS; ++i) 
+		{
 			/* skip users that aren't actually connected */
 			if (users[i].sock == -1)
+			{
 				continue;
+			}
 
-			if (pfd[i].revents & (POLLIN | POLLERR | POLLHUP)) {
-				if ((rs = recv(users[i].sock, buffer, sizeof(buffer), 0)) > 0) {
+			if (pfd[i].revents & (POLLIN | POLLERR | POLLHUP)) 
+			{
+				if ((rs = recv(users[i].sock, buffer, sizeof(buffer), 0)) > 0) 
+				{
 					telnet_recv(users[i].telnet, buffer, rs);
-				} else if (rs == 0) {
+				}
+				else if (rs == 0)
+				{
 					ESP_LOGI(TAG, "Connection closed.\n");
 					close(users[i].sock);
 					users[i].sock = -1;
@@ -353,7 +395,9 @@ static void telnet(void * param)
 						users[i].name = 0;
 					}
 					telnet_free(users[i].telnet);
-				} else if (errno != EINTR) {
+				}
+				else if (errno != EINTR)
+				{
 					ESP_LOGE(TAG, "recv(client) failed: %s\n",
 							strerror(errno));
 					exit(1);
@@ -363,10 +407,10 @@ static void telnet(void * param)
 	}
 }
 
-void start_telnet(QueueHandle_t _txQ, QueueHandle_t _rxQ)
+void start_telnet()
 {
-    uartTxQ  = _txQ;
-    uartRxQ  = _rxQ;
     xTaskCreate(telnet, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
     xTaskCreate(rcv_uart, "rcv_uart", 4096, (void*)AF_INET, 5, NULL);
+
+	start_uart_service(uartTx, uartRx);
 }

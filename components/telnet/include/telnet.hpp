@@ -1,9 +1,16 @@
 #ifndef TELNET_HPP
 #define TELNET_HPP
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/queue.h"
+#include <memory>
+#include <vector>
 
-void start_telnet(QueueHandle_t txQ, QueueHandle_t rxQ);
+class Telnet
+{
+public:
+    Telnet();
+    ~Telnet();
+};
+
+void start_telnet();
 
 #endif
