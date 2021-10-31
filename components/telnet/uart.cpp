@@ -24,22 +24,22 @@ static const int RX_BUF_SIZE = 1024;
 #define RXD_PIN (GPIO_NUM_16)
 
 ////////////////////////////////////////////////////////////////////
-// UartService
+// UartThread
 ////////////////////////////////////////////////////////////////////
-UartService::UartService(const char* taskName) :
+UartThread::UartThread(const char* taskName) :
     cName(taskName),
     run(false)
 {
 
 }
 
-UartService::~UartService()
+UartThread::~UartThread()
 {
     ESP_LOGI(cName, "terminate");
     stop();
 }
 
-void UartService::stop()
+void UartThread::stop()
 {
     if(run)
     {
@@ -48,12 +48,12 @@ void UartService::stop()
     }
 }
 
-bool UartService::isRun() const
+bool UartThread::isRun() const
 {
     return run;
 }
 
-void UartService::start(BlockingQueue<std::vector<uint8_t>>& queue)
+void UartThread::start(BlockingQueue<std::vector<uint8_t>>& queue)
 {
     if(not run)
     {
@@ -65,8 +65,9 @@ void UartService::start(BlockingQueue<std::vector<uint8_t>>& queue)
 ////////////////////////////////////////////////////////////////////
 // UartTx
 ////////////////////////////////////////////////////////////////////
-UartTx::UartTx():
-    UartService(__func__)
+UartTx::UartTx(int uartPortNum):
+    UartThread(__func__),
+    cUartNum(uartPortNum)
 {
 
 }
@@ -81,7 +82,7 @@ void UartTx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
         std::vector<uint8_t> msg;
         if(queue.pop(msg, std::chrono::milliseconds(1000)) and msg.size())
         {
-            uart_write_bytes(UART_NUM_2, msg.data(), msg.size());
+            uart_write_bytes(cUartNum, msg.data(), msg.size());
         }
     }
 }
@@ -89,8 +90,9 @@ void UartTx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
 ////////////////////////////////////////////////////////////////////
 // UartRx
 ////////////////////////////////////////////////////////////////////
-UartRx::UartRx():
-    UartService(__func__)
+UartRx::UartRx(int uartPortNum):
+    UartThread(__func__),
+    cUartNum(uartPortNum)
 {
 
 }
@@ -104,7 +106,7 @@ void UartRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
     {
         std::vector<uint8_t> rcvBuffer;
         rcvBuffer.resize(RX_BUF_SIZE + 1);
-        const int rxBytes = uart_read_bytes(UART_NUM_2, rcvBuffer.data(), RX_BUF_SIZE, 10);
+        const int rxBytes = uart_read_bytes(cUartNum, rcvBuffer.data(), RX_BUF_SIZE, 10);
         if(rxBytes)
         {
             queue.push(rcvBuffer, std::chrono::milliseconds(100));
@@ -113,15 +115,31 @@ void UartRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
 }
 
 ////////////////////////////////////////////////////////////////////
-// start_uart_service
+// UartService
 ////////////////////////////////////////////////////////////////////
-void start_uart_service(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ)
+UartService::UartService(int uartPortNum) :
+    cUartNum(uartPortNum),
+    txTask(uartPortNum),
+    rxTask(uartPortNum)
 {
-    static UartRx uartRx;
-    static UartTx uartTx;
 
-    const uart_config_t uart_config = {
-        .baud_rate = 115200,
+}
+
+UartService::~UartService()
+{
+    stop();
+}
+
+bool UartService::isRun() const
+{
+    return txTask.isRun() or rxTask.isRun();
+}
+
+void UartService::start(int baudRate, BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ)
+{
+    const uart_config_t uart_config = 
+    {
+        .baud_rate = baudRate,
         .data_bits = UART_DATA_8_BITS,
         .parity = UART_PARITY_DISABLE,
         .stop_bits = UART_STOP_BITS_1,
@@ -130,16 +148,42 @@ void start_uart_service(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue
     };
 
     // We won't use a buffer for sending data.
-    ESP_ERROR_CHECK(uart_driver_install(UART_NUM_2, RX_BUF_SIZE * 2, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(UART_NUM_2, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(UART_NUM_2, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
-
-    if(not uartRx.isRun())
+    ESP_ERROR_CHECK(uart_driver_install(cUartNum, RX_BUF_SIZE * 2, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(cUartNum, &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(cUartNum, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    
+    if(not txTask.isRun())
     {
-        uartRx.start(_rxQ);
+        txTask.start(_rxQ);
     }
-    if(not uartTx.isRun())
+    if(not rxTask.isRun())
     {
-        uartTx.start(_txQ);
+        rxTask.start(_txQ);
+    }
+}
+
+void UartService::stop()
+{
+    uart_driver_delete(cUartNum);
+    if(txTask.isRun())
+    {
+        txTask.stop();
+    }
+    if(rxTask.isRun())
+    {
+        rxTask.stop();
+    }
+}
+
+////////////////////////////////////////////////////////////////////
+// start_uart_service
+////////////////////////////////////////////////////////////////////
+void start_uart_service(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ)
+{
+    static UartService uartService(UART_NUM_2);
+
+    if(uartService.isRun())
+    {
+        uartService.start(230400, _txQ, _rxQ);
     }
 }

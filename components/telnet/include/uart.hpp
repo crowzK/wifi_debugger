@@ -6,7 +6,7 @@
 #include <atomic>
 #include "../../blocking_queue/include/blocking_queue.hpp"
 
-class UartService
+class UartThread
 {
 public:
     void start(BlockingQueue<std::vector<uint8_t>>&);
@@ -18,29 +18,48 @@ protected:
     std::atomic<bool> run;
     std::thread threadHandle;
     
-    UartService(const char* cName);
-    virtual ~UartService();
+    UartThread(const char* cName);
+    virtual ~UartThread();
     virtual void thread(BlockingQueue<std::vector<uint8_t>>& queue) = 0;
 };
 
-class UartTx : public UartService
+class UartTx : public UartThread
 {
 public:
-    UartTx();
+    UartTx(int uartPortNum);
     ~UartTx() = default;
     
 protected:
+    const int cUartNum;
     void thread(BlockingQueue<std::vector<uint8_t>>& queue);
 };
 
-class UartRx : public UartService
+class UartRx : public UartThread
 {
 public:
-    UartRx();
+    UartRx(int uartPortNum);
     ~UartRx() = default;
     
 protected:
+    const int cUartNum;
     void thread(BlockingQueue<std::vector<uint8_t>>& queue);
+};
+
+class UartService
+{
+public:
+    UartService(int uartPortNum);
+    ~UartService();
+
+    bool isRun() const;
+    
+    void start(int baudRate, BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ);
+    void stop();
+
+protected:
+    const int cUartNum;
+    UartTx txTask;
+    UartRx rxTask;
 };
 
 void start_uart_service(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ);
