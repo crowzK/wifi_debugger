@@ -154,11 +154,11 @@ void UartService::start(int baudRate, BlockingQueue<std::vector<uint8_t>>& _txQ,
     
     if(not txTask.isRun())
     {
-        txTask.start(_rxQ);
+        txTask.start(_txQ);
     }
     if(not rxTask.isRun())
     {
-        rxTask.start(_txQ);
+        rxTask.start(_rxQ);
     }
 }
 
@@ -182,7 +182,7 @@ void start_uart_service(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue
 {
     static UartService uartService(UART_NUM_2);
 
-    if(uartService.isRun())
+    if(not uartService.isRun())
     {
         uartService.start(230400, _txQ, _rxQ);
     }
