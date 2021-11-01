@@ -98,6 +98,7 @@ void wifi_init_sta(void)
 
     if(!strlen((const char*) wifi_config.sta.ssid))
     {
+        ESP_LOGI(TAG, "cannot find the saved SSID use default");
         const wifi_config_t cfg = 
         {
             .sta = 
@@ -139,14 +140,19 @@ void wifi_init_sta(void)
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
-    if (bits & WIFI_CONNECTED_BIT) {
+    if (bits & WIFI_CONNECTED_BIT)
+    {
         ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+                 wifi_config.sta.ssid, wifi_config.sta.password);
         ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
-    } else if (bits & WIFI_FAIL_BIT) {
+    } 
+    else if (bits & WIFI_FAIL_BIT) 
+    {
         ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-                 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
-    } else {
+                 wifi_config.sta.ssid, wifi_config.sta.password);
+    }
+    else 
+    {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
 
@@ -164,6 +170,7 @@ extern "C" void app_main(void)
       ESP_ERROR_CHECK(nvs_flash_erase());
       ret = nvs_flash_init();
     }
+    
     ESP_ERROR_CHECK(ret);
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
