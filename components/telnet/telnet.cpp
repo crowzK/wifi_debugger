@@ -35,93 +35,87 @@ static BlockingQueue<std::vector<uint8_t>> uartRx(10);
 
 static const char *TAG = "telnet";
 
-static const telnet_telopt_t telopts[] = 
+////////////////////////////////////////////////////////////////////
+// TelnetClient
+////////////////////////////////////////////////////////////////////
+TelnetClient::TelnetClient(int socket) :
+	socket(socket),
+	run(true),
+	txHandle(std::thread([this]{ tcpTxTask(); }))
 {
-	{ TELNET_TELOPT_COMPRESS2,	TELNET_WILL, TELNET_DONT },
-	{ -1, 0, 0 }
-};
-
-struct user_t 
-{
-	char *name;
-	SOCKET sock;
-	telnet_t *telnet;
-	char linebuf[256];
-	int linepos;
-};
-
-static struct user_t users[MAX_USERS];
-
-static void linebuffer_push(char *buffer, size_t size, int *linepos,
-		char ch, void (*cb)(const char *line, size_t overflow, void *ud),
-		void *ud) 
-{
-
-	/* CRLF -- line terminator */
-	if (ch == '\n' && *linepos > 0 && buffer[*linepos - 1] == '\r') {
-		/* NUL terminate (replaces \r in buffer), notify app, clear */
-		buffer[*linepos - 1] = 0;
-		cb(buffer, 0, ud);
-		*linepos = 0;
-
-	/* CRNUL -- just a CR */
-	} else if (ch == 0 && *linepos > 0 && buffer[*linepos - 1] == '\r') {
-		/* do nothing, the CR is already in the buffer */
-
-	/* anything else (including technically invalid CR followed by
-	 * anything besides LF or NUL -- just buffer if we have room
-	 * \r
-	 */
-	} else if (*linepos != (int)size) {
-		buffer[(*linepos)++] = ch;
-
-	/* buffer overflow */
-	} else {
-		/* terminate (NOTE: eats a byte), notify app, clear buffer */
-		buffer[size - 1] = 0;
-		cb(buffer, size - 1, ud);
-		*linepos = 0;
-	}
-}
-
-static void _send_uart(const char *from, const char *msg) 
-{
-    uint32_t len = strlen(msg) + 2;
-    if(len == 0)
-    {
-        return;
-    }
-	std::vector<uint8_t> tx;
-	tx.resize(len);
-    memcpy(tx.data(), msg, len);
-	tx[len - 2] = '\r';
-	tx[len - 1] = '\n';
-	uartTx.push(tx, std::chrono::milliseconds(100));
-}
-
-static void _message(const char *from, const char *msg) 
-{
-	int i;
-	for (i = 0; i != MAX_USERS; ++i) 
+	static const telnet_telopt_t telopts[] = 
 	{
-		if (users[i].sock != -1) {
-			telnet_printf(users[i].telnet, "%s\n", msg);
+		{ TELNET_TELOPT_COMPRESS2,	TELNET_WILL, TELNET_DONT },
+		{ -1, 0, 0 }
+	};
+
+	/* init, welcome */
+	telnet = telnet_init(telopts, (telnet_event_handler_t)eventHandler, 0, this);
+	telnet_negotiate(static_cast<telnet_t*>(telnet), TELNET_WILL, TELNET_TELOPT_COMPRESS2);
+	telnet_negotiate(static_cast<telnet_t*>(telnet), TELNET_WILL, TELNET_TELOPT_ECHO);
+	telnet_printf(static_cast<telnet_t*>(telnet), "WIFI Debugger\n");
+}
+
+TelnetClient::~TelnetClient()
+{
+	run = false;
+	txHandle.join();
+	telnet_free(static_cast<telnet_t*>(telnet));
+	shutdown(socket, 0);
+	close(socket);
+}
+
+void TelnetClient::tcpRxTask()
+{
+	char buffer[512];
+	while(run)
+	{
+		int rs;
+		if ((rs = recv(socket, buffer, sizeof(buffer), 0)) > 0) 
+		{
+			std::lock_guard<std::recursive_mutex> guard(mutex);
+			telnet_recv(static_cast<telnet_t*>(telnet), buffer, rs);
+		}
+		else
+		{
+			run = false;
 		}
 	}
 }
 
-static void _send(SOCKET sock, const char *buffer, size_t size) 
+void TelnetClient::tcpTxTask()
+{
+	while(run)
+	{
+		std::vector<uint8_t> rx;
+		if(uartRx.pop(rx, std::chrono::milliseconds(100)) and rx.size())
+		{
+			std::lock_guard<std::recursive_mutex> guard(mutex);
+			telnet_send(static_cast<telnet_t*>(telnet), (char*)rx.data(), rx.size());
+		}
+	}
+}
+
+void TelnetClient::sendUart(const char *buffer, size_t size)
+{
+    if(size == 0)
+    {
+        return;
+    }
+	std::vector<uint8_t> tx;
+	tx.resize(size);
+    memcpy(tx.data(), buffer, size);
+	uartTx.push(tx, std::chrono::milliseconds(100));
+}
+
+void TelnetClient::sendToClient(const char *buffer, size_t size)
 {
 	int rs;
-
-	/* ignore on invalid socket */
-	if (sock == -1)
-		return;
 
 	/* send data */
 	while (size > 0) 
 	{
-		if ((rs = send(sock, buffer, (int)size, 0)) == -1) 
+		if ((rs = send(socket, buffer, (int)size, 0)) == -1) 
 		{
 			if (errno != EINTR && errno != ECONNRESET) 
 			{
@@ -143,82 +137,34 @@ static void _send(SOCKET sock, const char *buffer, size_t size)
 	}
 }
 
-/* process input line */
-static void _online(const char *line, size_t overflow, void *ud) 
+void TelnetClient::eventHandler(void *telnet, void *ev, TelnetClient *tcpClient)
 {
-	struct user_t *user = (struct user_t*)ud;
-	int i;
+	TelnetClient& telnetClient = *tcpClient;
+	telnet_event_t& event = *static_cast<telnet_event_t*>(ev);
 
-	(void)overflow;
-
-	/* if the user has no name, this is his "login" */
-	if (user->name == 0) {
-		/* must not be empty, must be at least 32 chars */
-		if (strlen(line) == 0 || strlen(line) > 32) {
-			telnet_printf(user->telnet, "Invalid name.\nEnter name: ");
-			return;
-		}
-
-		/* must not already be in use */
-		for (i = 0; i != MAX_USERS; ++i) {
-			if (users[i].name != 0 && strcmp(users[i].name, line) == 0) {
-				telnet_printf(user->telnet, "Name in use.\nEnter name: ");
-				return;
-			}
-		}
-
-		/* keep name */
-		user->name = strdup(line);
-		telnet_printf(user->telnet, "Welcome, %s!\n", line);
-		return;
-	}
-
-	/* just a message -- send to all users */
-	_send_uart(user->name, line);
-}
-
-static void _input(struct user_t *user, const char *buffer,
-		size_t size) 
-{
-	unsigned int i;
-	for (i = 0; user->sock != -1 && i != size; ++i)
+	switch (event.type) 
 	{
-		linebuffer_push(user->linebuf, sizeof(user->linebuf), &user->linepos,
-				(char)buffer[i], _online, user);
-	}
-}
-
-static void _event_handler(telnet_t *telnet, telnet_event_t *ev,
-		void *user_data) 
-{
-	struct user_t *user = (struct user_t*)user_data;
-
-	switch (ev->type) {
 	/* data received */
 	case TELNET_EV_DATA:
-		_input(user, ev->data.buffer, ev->data.size);
-		telnet_negotiate(telnet, TELNET_WONT, TELNET_TELOPT_ECHO);
-		telnet_negotiate(telnet, TELNET_WILL, TELNET_TELOPT_ECHO);
+		telnetClient.sendUart(event.data.buffer, event.data.size);
+		telnet_negotiate(static_cast<telnet_t*>(telnet), TELNET_WONT, TELNET_TELOPT_ECHO);
+		telnet_negotiate(static_cast<telnet_t*>(telnet), TELNET_WILL, TELNET_TELOPT_ECHO);
 		break;
 	/* data must be sent */
 	case TELNET_EV_SEND:
-		_send(user->sock, ev->data.buffer, ev->data.size);
+		telnetClient.sendToClient(event.data.buffer, event.data.size);
 		break;
 	/* enable compress2 if accepted by client */
 	case TELNET_EV_DO:
-		if (ev->neg.telopt == TELNET_TELOPT_COMPRESS2)
-			telnet_begin_compress2(telnet);
+		if (event.neg.telopt == TELNET_TELOPT_COMPRESS2)
+		{
+			telnet_begin_compress2(static_cast<telnet_t*>(telnet));
+		}
 		break;
 	/* error */
 	case TELNET_EV_ERROR:
-		close(user->sock);
-		user->sock = -1;
-		if (user->name != 0) {
-			_message(user->name, "** HAS HAD AN ERROR **");
-			free(user->name);
-			user->name = 0;
-		}
-		telnet_free(user->telnet);
+		close(telnetClient.socket);
+		telnet_free(static_cast<telnet_t*>(telnet));
 		break;
 	default:
 		/* ignore */
@@ -226,191 +172,102 @@ static void _event_handler(telnet_t *telnet, telnet_event_t *ev,
 	}
 }
 
-static void rcv_uart(void * param)
+////////////////////////////////////////////////////////////////////
+// Telnet
+////////////////////////////////////////////////////////////////////
+Telnet::Telnet() :
+	threadHandle(std::thread([this]{ thread(); }))
 {
-    while(1)
-    {
-		std::vector<uint8_t> rx;
-		if(uartRx.pop(rx, std::chrono::milliseconds(100)) and rx.size())
-		{
-			for (int i = 0; i != MAX_USERS; ++i) 
-			{
-				if (users[i].sock != -1) 
-				{
-					telnet_send(users[i].telnet, (char*)rx.data(), rx.size());
-				}
-			}
-		}
+
+}
+
+Telnet::~Telnet()
+{
+
+}
+
+void Telnet::thread()
+{
+    char addr_str[128];
+    int ip_protocol = IPPROTO_IP;
+    int keepAlive = 1;
+    int keepIdle = 5;
+    int keepInterval = 5;
+    int keepCount = 3;
+    struct sockaddr_storage dest_addr;
+
+	struct sockaddr_in *dest_addr_ip4 = (struct sockaddr_in *)&dest_addr;
+	dest_addr_ip4->sin_addr.s_addr = htonl(INADDR_ANY);
+	dest_addr_ip4->sin_family = AF_INET;
+	dest_addr_ip4->sin_port = htons(23);
+
+    int listen_sock = socket(AF_INET, SOCK_STREAM, ip_protocol);
+    if (listen_sock < 0) 
+	{
+        ESP_LOGE(TAG, "Unable to create socket: errno %d", errno);
+        return;
     }
+
+    int opt = 1;
+    setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
+    ESP_LOGI(TAG, "Socket created");
+
+    int err = bind(listen_sock, (struct sockaddr *)&dest_addr, sizeof(dest_addr));
+    if (err != 0) 
+	{
+        ESP_LOGE(TAG, "Socket unable to bind: errno %d", errno);
+        ESP_LOGE(TAG, "IPPROTO: %d", AF_INET);
+        goto CLEAN_UP;
+    }
+    ESP_LOGI(TAG, "Socket bound, port %d", 23);
+
+    err = listen(listen_sock, 1);
+    if (err != 0) 
+	{
+        ESP_LOGE(TAG, "Error occurred during listen: errno %d", errno);
+        goto CLEAN_UP;
+    }
+
+    while (1) 
+	{
+
+        ESP_LOGI(TAG, "Socket listening");
+
+        struct sockaddr_storage source_addr; // Large enough for both IPv4 or IPv6
+        socklen_t addr_len = sizeof(source_addr);
+        int sock = accept(listen_sock, (struct sockaddr *)&source_addr, &addr_len);
+        if (sock < 0) {
+            ESP_LOGE(TAG, "Unable to accept connection: errno %d", errno);
+            break;
+        }
+
+        // Set tcp keepalive option
+        setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &keepAlive, sizeof(int));
+        setsockopt(sock, IPPROTO_TCP, TCP_KEEPIDLE, &keepIdle, sizeof(int));
+        setsockopt(sock, IPPROTO_TCP, TCP_KEEPINTVL, &keepInterval, sizeof(int));
+        setsockopt(sock, IPPROTO_TCP, TCP_KEEPCNT, &keepCount, sizeof(int));
+
+        // Convert ip address to string
+        if (source_addr.ss_family == PF_INET) 
+		{
+            inet_ntoa_r(((struct sockaddr_in *)&source_addr)->sin_addr, addr_str, sizeof(addr_str) - 1);
+        }
+        ESP_LOGI(TAG, "Socket accepted ip address: %s", addr_str);
+
+		TelnetClient client(sock);
+		client.tcpRxTask();
+    }
+
+CLEAN_UP:
+    close(listen_sock);
 }
 
-static void telnet(void * param) 
-{
-	char buffer[512];
-	short listen_port;
-	SOCKET listen_sock;
-	SOCKET client_sock;
-	int rs;
-	int i;
-	struct sockaddr_in addr;
-	socklen_t addrlen;
-	struct pollfd pfd[MAX_USERS + 1];
-
-
-	/* initialize data structures */
-	memset(&pfd, 0, sizeof(pfd));
-	memset(users, 0, sizeof(users));
-
-	for (i = 0; i != MAX_USERS; ++i)
-	{
-		users[i].sock = -1;
-	}
-
-	/* parse listening port */
-	listen_port = 23;
-
-	/* create listening socket */
-	if ((listen_sock = socket(AF_INET, SOCK_STREAM, 0)) == -1) 
-	{
-		ESP_LOGE(TAG, "socket() failed: %s\n", strerror(errno));
-        return;
-	}
-
-	/* reuse address option */
-	rs = 1;
-	setsockopt(listen_sock, SOL_SOCKET, SO_REUSEADDR, (char*)&rs, sizeof(rs));
-
-	/* bind to listening addr/port */
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	addr.sin_port = htons(listen_port);
-	if (bind(listen_sock, (struct sockaddr *)&addr, sizeof(addr)) == -1) 
-	{
-		ESP_LOGE(TAG, "bind() failed: %s\n", strerror(errno));
-		close(listen_sock);
-        return;
-	}
-
-	/* listen for clients */
-	if (listen(listen_sock, 5) == -1) 
-	{
-		ESP_LOGE(TAG, "listen() failed: %s\n", strerror(errno));
-		close(listen_sock);
-        return;
-	}
-
-	ESP_LOGI(TAG, "LISTENING ON PORT %d\n", listen_port);
-
-	/* initialize listening descriptors */
-	pfd[MAX_USERS].fd = listen_sock;
-	pfd[MAX_USERS].events = POLLIN;
-
-	/* loop for ever */
-	for (;;) 
-	{
-		/* prepare for poll */
-		for (i = 0; i != MAX_USERS; ++i) 
-		{
-			if (users[i].sock != -1) {
-				pfd[i].fd = users[i].sock;
-				pfd[i].events = POLLIN;
-			} else {
-				pfd[i].fd = -1;
-				pfd[i].events = 0;
-			}
-		}
-
-		/* poll */
-		rs = poll(pfd, MAX_USERS + 1, -1);
-		if (rs == -1 && errno != EINTR) 
-		{
-			ESP_LOGE(TAG, "poll() failed: %s\n", strerror(errno));
-			close(listen_sock);
-			return;
-		}
-
-		/* new connection */
-		if (pfd[MAX_USERS].revents & (POLLIN | POLLERR | POLLHUP)) 
-		{
-			/* acept the sock */
-			addrlen = sizeof(addr);
-			if ((client_sock = accept(listen_sock, (struct sockaddr *)&addr,
-					&addrlen)) == -1) {
-				ESP_LOGE(TAG, "accept() failed: %s\n", strerror(errno));
-			    return;
-			}
-
-			ESP_LOGI(TAG, "Connection received.\n");
-
-			/* find a free user */
-			for (i = 0; i != MAX_USERS; ++i)
-			{
-				if (users[i].sock == -1)
-				{
-					break;
-				}
-			}
-			if (i == MAX_USERS) 
-			{
-				ESP_LOGI(TAG, "  rejected (too many users)\n");
-				_send(client_sock, "Too many users.\r\n", 14);
-				close(client_sock);
-			}
-
-			/* init, welcome */
-			users[i].sock = client_sock;
-			users[i].telnet = telnet_init(telopts, _event_handler, 0,
-					&users[i]);
-			telnet_negotiate(users[i].telnet, TELNET_WILL,
-					TELNET_TELOPT_COMPRESS2);
-			telnet_printf(users[i].telnet, "Enter name: ");
-
-			telnet_negotiate(users[i].telnet, TELNET_WILL, TELNET_TELOPT_ECHO);
-		}
-
-		/* read from client */
-		for (i = 0; i != MAX_USERS; ++i) 
-		{
-			/* skip users that aren't actually connected */
-			if (users[i].sock == -1)
-			{
-				continue;
-			}
-
-			if (pfd[i].revents & (POLLIN | POLLERR | POLLHUP)) 
-			{
-				if ((rs = recv(users[i].sock, buffer, sizeof(buffer), 0)) > 0) 
-				{
-					telnet_recv(users[i].telnet, buffer, rs);
-				}
-				else if (rs == 0)
-				{
-					ESP_LOGI(TAG, "Connection closed.\n");
-					close(users[i].sock);
-					users[i].sock = -1;
-					if (users[i].name != 0) {
-						_message(users[i].name, "** HAS DISCONNECTED **");
-						free(users[i].name);
-						users[i].name = 0;
-					}
-					telnet_free(users[i].telnet);
-				}
-				else if (errno != EINTR)
-				{
-					ESP_LOGE(TAG, "recv(client) failed: %s\n",
-							strerror(errno));
-					exit(1);
-				}
-			}
-		}
-	}
-}
-
+////////////////////////////////////////////////////////////////////
+// start_telnet
+////////////////////////////////////////////////////////////////////
 void start_telnet()
 {
-    xTaskCreate(telnet, "tcp_server", 4096, (void*)AF_INET, 5, NULL);
-    xTaskCreate(rcv_uart, "rcv_uart", 4096, (void*)AF_INET, 5, NULL);
-
+	static Telnet _telnet;
 	start_uart_service(uartTx, uartRx);
 }
