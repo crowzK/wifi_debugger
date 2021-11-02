@@ -19,7 +19,7 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#include "telnet.hpp"
+#include "logger.hpp"
 #include "uart.hpp"
 #include "blocking_queue.hpp"
 

@@ -22,7 +22,7 @@
 #include <ctype.h>
 
 #include "libtelnet.h"
-#include "telnet.hpp"
+#include "logger.hpp"
 #include "esp_log.h"
 #include "uart.hpp"
 
@@ -33,7 +33,7 @@
 static BlockingQueue<std::vector<uint8_t>> uartTx(10);
 static BlockingQueue<std::vector<uint8_t>> uartRx(10);
 
-static const char *TAG = "telnet";
+static const char *TAG = "logger";
 
 ////////////////////////////////////////////////////////////////////
 // TelnetClient
