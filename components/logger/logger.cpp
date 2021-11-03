@@ -103,6 +103,24 @@ void TelnetClient::sendUart(const char *buffer, size_t size)
         return;
     }
 	std::vector<uint8_t> tx;
+	if(buffer[0] == '`')
+	{
+		switch(buffer[1])
+		{
+		case 'c':
+			tx.push_back(3);
+			uartTx.push(tx, std::chrono::milliseconds(100));
+			return;
+		case 'r':
+			tx.push_back(18);
+			uartTx.push(tx, std::chrono::milliseconds(100));
+			return;
+		case 'u':
+			tx.push_back(21);
+			uartTx.push(tx, std::chrono::milliseconds(100));
+			return;
+		}
+	}
 	tx.resize(size);
     memcpy(tx.data(), buffer, size);
 	uartTx.push(tx, std::chrono::milliseconds(100));
