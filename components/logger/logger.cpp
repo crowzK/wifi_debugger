@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
+#include <time.h>
 
 #include "libtelnet.h"
 #include "logger.hpp"
@@ -85,13 +86,45 @@ void TelnetClient::tcpRxTask()
 
 void TelnetClient::tcpTxTask()
 {
+	std::vector<uint8_t> strBuffer;
+	strBuffer.reserve(512);
 	while(run)
 	{
 		std::vector<uint8_t> rx;
 		if(uartRx.pop(rx, std::chrono::milliseconds(100)) and rx.size())
 		{
-			std::lock_guard<std::recursive_mutex> guard(mutex);
-			telnet_send(static_cast<telnet_t*>(telnet), (char*)rx.data(), rx.size());
+			for(int i = 0; i < rx.size(); i++)
+			{
+				uint8_t d = rx[i];
+				if(d == '\r')
+				{
+					continue;
+				}
+				if(d == '\n')
+				{
+					strBuffer.push_back('\r');
+					strBuffer.push_back('\n');
+					struct timeval tv_now;
+					gettimeofday(&tv_now, NULL);
+
+					char buffer[40];
+					int m = tv_now.tv_sec / 60;
+					int s = tv_now.tv_sec % 60;
+					int ms = tv_now.tv_usec / 1000;
+
+					sprintf(buffer, "[%02d:%02d:%03d] ", m, s, ms);
+					std::lock_guard<std::recursive_mutex> guard(mutex);
+					telnet_send(static_cast<telnet_t*>(telnet), buffer, strlen(buffer));
+					telnet_send(static_cast<telnet_t*>(telnet), (char*)strBuffer.data(), strBuffer.size());
+					strBuffer.clear();
+					continue;
+				}
+				strBuffer.push_back(d);
+				if(strBuffer.size() >= 512)
+				{
+					strBuffer.clear();
+				}
+			}
 		}
 	}
 }
