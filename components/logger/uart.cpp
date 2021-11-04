@@ -109,6 +109,7 @@ void UartRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
         const int rxBytes = uart_read_bytes(cUartNum, rcvBuffer.data(), RX_BUF_SIZE, 10);
         if(rxBytes)
         {
+            rcvBuffer.resize(rxBytes);
             queue.push(rcvBuffer, std::chrono::milliseconds(100));
         }
     }
