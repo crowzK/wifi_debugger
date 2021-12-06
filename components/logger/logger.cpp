@@ -26,6 +26,7 @@
 #include "logger.hpp"
 #include "esp_log.h"
 #include "uart.hpp"
+#include "logger_web.hpp"
 
 #define SOCKET int
 #define MAX_USERS 64
@@ -321,4 +322,5 @@ void start_telnet()
 {
 	static Telnet _telnet;
 	start_uart_service(uartTx, uartRx);
+	start_logger_web();
 }
