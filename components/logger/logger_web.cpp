@@ -17,47 +17,15 @@
 #include "nvs_flash.h"
 #include "esp_err.h"
 #include "esp_netif.h"
+#include "logger_web.hpp"
 
 /* A simple example that demonstrates using websocket echo server
  */
 static const char *TAG = "ws_echo_server";
 
-/*
- * Structure holding server handle
- * and internal socket fd in order
- * to use out of request send
- */
-struct async_resp_arg {
-    httpd_handle_t hd;
-    int fd;
-};
-
-/*
- * async send function, which we put into the httpd work queue
- */
-static void ws_async_send(void *arg)
-{
-    static const char * data = "Async data";
-    struct async_resp_arg *resp_arg = (async_resp_arg*)arg;
-    httpd_handle_t hd = resp_arg->hd;
-    int fd = resp_arg->fd;
-    httpd_ws_frame_t ws_pkt;
-    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
-    ws_pkt.payload = (uint8_t*)data;
-    ws_pkt.len = strlen(data);
-    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
-
-    httpd_ws_send_frame_async(hd, fd, &ws_pkt);
-    free(resp_arg);
-}
-
-static esp_err_t trigger_async_send(httpd_handle_t handle, httpd_req_t *req)
-{
-    struct async_resp_arg *resp_arg = (async_resp_arg*)malloc(sizeof(struct async_resp_arg));
-    resp_arg->hd = req->handle;
-    resp_arg->fd = httpd_req_to_sockfd(req);
-    return httpd_queue_work(handle, ws_async_send, resp_arg);
-}
+static std::unique_ptr<WebLoggerRx> pWebLoggerRx;
+static BlockingQueue<std::vector<uint8_t>>* pRxQ;
+static BlockingQueue<std::vector<uint8_t>>* pTxQ;
 
 /*
  * This handler echos back the received ws data
@@ -65,6 +33,13 @@ static esp_err_t trigger_async_send(httpd_handle_t handle, httpd_req_t *req)
  */
 static esp_err_t echo_handler(httpd_req_t *req)
 {
+    if((not pWebLoggerRx) or (pWebLoggerRx->fd != httpd_req_to_sockfd(req)))
+    {
+        pWebLoggerRx.reset();
+        pWebLoggerRx = std::make_unique<WebLoggerRx>(httpd_req_to_sockfd(req), req->handle);
+        pWebLoggerRx->start();
+    }
+
     uint8_t buf[128] = { 0 };
     httpd_ws_frame_t ws_pkt;
     memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
@@ -77,16 +52,13 @@ static esp_err_t echo_handler(httpd_req_t *req)
     }
     ESP_LOGI(TAG, "Got packet with message: %s", ws_pkt.payload);
     ESP_LOGI(TAG, "Packet type: %d", ws_pkt.type);
-    if (ws_pkt.type == HTTPD_WS_TYPE_TEXT &&
-        strcmp((char*)ws_pkt.payload,"Trigger async") == 0) {
-            ESP_LOGI(TAG, "Trigger async");
-        return trigger_async_send(req->handle, req);
-    }
 
-    ret = httpd_ws_send_frame(req, &ws_pkt);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+    std::vector<uint8_t> tx;
+    for(int i = 0; i < ws_pkt.len; i ++)
+    {
+        tx.push_back(ws_pkt.payload[i]);
     }
+    pTxQ->push(tx, std::chrono::milliseconds(1000));
     return ret;
 }
 
@@ -167,8 +139,74 @@ static void connect_handler(void* arg, esp_event_base_t event_base,
     }
 }
 
-void start_logger_web(void)
+////////////////////////////////////////////////////////////////////
+// WebLoggerRx
+////////////////////////////////////////////////////////////////////
+WebLoggerRx::WebLoggerRx(int _fd, httpd_handle_t _hd) :
+    fd(_fd),
+    hd(_hd),
+    run(false)
 {
+    
+}
+
+WebLoggerRx::~WebLoggerRx()
+{
+    stop();
+}
+
+void WebLoggerRx::start()
+{
+    if(not run)
+    {
+        run = true;
+        threadHandle = std::thread([this]{thread(*pRxQ);});
+    }
+}
+
+void WebLoggerRx::stop()
+{
+    if(run)
+    {
+        run = false;
+        threadHandle.join();
+    }
+}
+
+bool WebLoggerRx::isRun() const
+{
+    return run;
+}
+
+void WebLoggerRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
+{
+    esp_log_level_set("WebLoggerRx", ESP_LOG_INFO);
+    ESP_LOGI("WebLoggerRx", "start");
+
+    while (run) 
+    {
+        std::vector<uint8_t> msg;
+        if(queue.pop(msg, std::chrono::milliseconds(1000)) and msg.size())
+        {
+            httpd_ws_frame_t ws_pkt;
+            memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+            ws_pkt.payload = msg.data();
+            ws_pkt.len = msg.size();
+            ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+
+            httpd_ws_send_frame_async(hd, fd, &ws_pkt);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////
+// start_logger_web
+////////////////////////////////////////////////////////////////////
+void start_logger_web(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ)
+{
+    pRxQ = &_rxQ;
+    pTxQ = &_txQ;
+
     static httpd_handle_t server = NULL;
 
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));

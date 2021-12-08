@@ -322,5 +322,5 @@ void start_telnet()
 {
 	static Telnet _telnet;
 	start_uart_service(uartTx, uartRx);
-	start_logger_web();
+	start_logger_web(uartTx, uartRx);
 }
