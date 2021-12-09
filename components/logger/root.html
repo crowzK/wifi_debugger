@@ -4,7 +4,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script language="javascript" type="text/javascript">
 
-  var wsUri = "ws://192.168.10.110/ws";
   var output;
   
   function init() {
@@ -13,8 +12,10 @@
     pre.style.wordWrap = "break-word";
     output.appendChild(pre);
 
-    // console.log(window.location.href);
+    // console.log(window.location.host);
     // todo use window.location.hostname to access websocket
+    //var wsUri = "ws://192.168.10.110/ws";
+    var wsUri = "ws://" + window.location.host + "/ws";
     websocket = new WebSocket(wsUri);
     websocket.onopen = function(evt) { onOpen(evt) };
     websocket.onclose = function(evt) { onClose(evt) }; 
