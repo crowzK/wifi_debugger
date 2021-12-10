@@ -14,7 +14,7 @@
 
     // console.log(window.location.host);
     // todo use window.location.hostname to access websocket
-    //var wsUri = "ws://192.168.10.110/ws";
+    // var wsUri = "ws://192.168.10.110/ws";
     var wsUri = "ws://" + window.location.host + "/ws";
     websocket = new WebSocket(wsUri);
     websocket.onopen = function(evt) { onOpen(evt) };

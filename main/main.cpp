@@ -19,7 +19,7 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-#include "logger.hpp"
+#include "logger_web.hpp"
 #include "uart.hpp"
 #include "blocking_queue.hpp"
 #include "smart_config.hpp"
@@ -27,5 +27,5 @@
 extern "C" void app_main(void)
 {
     startSmartConfig();
-    start_telnet();
+    start_logger_web();
 }

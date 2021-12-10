@@ -18,59 +18,49 @@
 #include "esp_err.h"
 #include "esp_netif.h"
 #include "logger_web.hpp"
+#include <memory>
 
 /* A simple example that demonstrates using websocket echo server
  */
-static const char *TAG = "ws_echo_server";
+static const char *TAG = "logger";
 
-static std::unique_ptr<WebLoggerRx> pWebLoggerRx;
-static BlockingQueue<std::vector<uint8_t>>* pRxQ;
-static BlockingQueue<std::vector<uint8_t>>* pTxQ;
-
-/*
- * This handler echos back the received ws data
- * and triggers an async send if certain message received
- */
-static esp_err_t echo_handler(httpd_req_t *req)
+//*******************************************************************
+// UriHandler
+//*******************************************************************
+UriHandler::UriHandler(httpd_handle_t server, const char* uri, httpd_method_t method) :
+    serverHandle(server),
+    uri{.uri        = uri,
+        .method     = method,
+        .handler    = handler,
+        .user_ctx   = this}
 {
-    if((not pWebLoggerRx) or (pWebLoggerRx->fd != httpd_req_to_sockfd(req)))
-    {
-        pWebLoggerRx.reset();
-        pWebLoggerRx = std::make_unique<WebLoggerRx>(httpd_req_to_sockfd(req), req->handle);
-        pWebLoggerRx->start();
-    }
-
-    uint8_t buf[128] = { 0 };
-    httpd_ws_frame_t ws_pkt;
-    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
-    ws_pkt.payload = buf;
-    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
-    esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 128);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
-        return ret;
-    }
-    ESP_LOGI(TAG, "Got packet with message: %s", ws_pkt.payload);
-    ESP_LOGI(TAG, "Packet type: %d", ws_pkt.type);
-
-    std::vector<uint8_t> tx;
-    for(int i = 0; i < ws_pkt.len; i ++)
-    {
-        tx.push_back(ws_pkt.payload[i]);
-    }
-    pTxQ->push(tx, std::chrono::milliseconds(1000));
-    return ret;
+    httpd_register_uri_handler(serverHandle, &this->uri);
 }
 
-static const httpd_uri_t ws = {
-        .uri        = "/ws",
-        .method     = HTTP_GET,
-        .handler    = echo_handler,
-        .user_ctx   = NULL,
-        .is_websocket = true
-};
+UriHandler::~UriHandler()
+{
+    httpd_unregister_uri_handler(serverHandle, uri.uri, uri.method);
+}
 
-static esp_err_t root_handler(httpd_req_t *req)
+esp_err_t UriHandler::handler(httpd_req_t *req)
+{
+    UriHandler* pHandle = reinterpret_cast<UriHandler*>(req->user_ctx);
+    if(pHandle == nullptr)
+    {
+        return ESP_FAIL;
+    }
+    return pHandle->userHandler(req);
+}
+
+//*******************************************************************
+// IndexHandler
+//*******************************************************************
+IndexHandler::IndexHandler(httpd_handle_t server) :
+    UriHandler(server, "/", HTTP_GET)
+{
+}
+
+esp_err_t IndexHandler::userHandler(httpd_req *req)
 {
     /* Get handle to embedded file upload script */
     extern const unsigned char upload_script_start[] asm("_binary_root_html_start");
@@ -84,68 +74,14 @@ static esp_err_t root_handler(httpd_req_t *req)
     return ESP_OK;
 }
 
-/* URI handler for / */
-static const httpd_uri_t root = {
-        .uri       = "/",
-        .method    = HTTP_GET,
-        .handler   = root_handler,
-        .user_ctx  = NULL
-};
-
-
-static httpd_handle_t start_webserver(void)
-{
-    httpd_handle_t server = NULL;
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
-    // Start the httpd server
-    ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
-    if (httpd_start(&server, &config) == ESP_OK) {
-        // Registering the ws handler
-        ESP_LOGI(TAG, "Registering URI handlers");
-        httpd_register_uri_handler(server, &ws);
-        httpd_register_uri_handler(server, &root);
-        return server;
-    }
-
-    ESP_LOGI(TAG, "Error starting server!");
-    return NULL;
-}
-
-static void stop_webserver(httpd_handle_t server)
-{
-    // Stop the httpd server
-    httpd_stop(server);
-}
-
-static void disconnect_handler(void* arg, esp_event_base_t event_base,
-                               int32_t event_id, void* event_data)
-{
-    httpd_handle_t* server = (httpd_handle_t*) arg;
-    if (*server) {
-        ESP_LOGI(TAG, "Stopping webserver");
-        stop_webserver(*server);
-        *server = NULL;
-    }
-}
-
-static void connect_handler(void* arg, esp_event_base_t event_base,
-                            int32_t event_id, void* event_data)
-{
-    httpd_handle_t* server = (httpd_handle_t*) arg;
-    if (*server == NULL) {
-        ESP_LOGI(TAG, "Starting webserver");
-        *server = start_webserver();
-    }
-}
-
-////////////////////////////////////////////////////////////////////
+//*******************************************************************
 // WebLoggerRx
-////////////////////////////////////////////////////////////////////
-WebLoggerRx::WebLoggerRx(int _fd, httpd_handle_t _hd) :
+//*******************************************************************
+WebLoggerRx::WebLoggerRx(int _fd, httpd_handle_t _hd, BlockingQueue<std::vector<uint8_t>>& queue) :
     fd(_fd),
     hd(_hd),
-    run(false)
+    run(false),
+    queue(queue)
 {
     
 }
@@ -160,7 +96,7 @@ void WebLoggerRx::start()
     if(not run)
     {
         run = true;
-        threadHandle = std::thread([this]{thread(*pRxQ);});
+        threadHandle = std::thread([this]{thread();});
     }
 }
 
@@ -178,7 +114,7 @@ bool WebLoggerRx::isRun() const
     return run;
 }
 
-void WebLoggerRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
+void WebLoggerRx::thread()
 {
     esp_log_level_set("WebLoggerRx", ESP_LOG_INFO);
     ESP_LOGI("WebLoggerRx", "start");
@@ -199,19 +135,114 @@ void WebLoggerRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
     }
 }
 
-////////////////////////////////////////////////////////////////////
-// start_logger_web
-////////////////////////////////////////////////////////////////////
-void start_logger_web(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ)
+//*******************************************************************
+// WsHandler
+//*******************************************************************
+WsHandler* WsHandler::pWsHandler;
+
+WsHandler::WsHandler(httpd_handle_t server, BlockingQueue<std::vector<uint8_t>>& txQ, BlockingQueue<std::vector<uint8_t>>& rxQ) :
+    serverHandle(server),
+    uri{.uri        = "/ws",
+        .method     = HTTP_GET,
+        .handler    = handler,
+        .user_ctx   = this,
+        .is_websocket = true},
+    txQ(txQ),
+    rxQ(rxQ)
 {
-    pRxQ = &_rxQ;
-    pTxQ = &_txQ;
+    pWsHandler = this;
+    httpd_register_uri_handler(serverHandle, &uri);
+}
 
-    static httpd_handle_t server = NULL;
+WsHandler::~WsHandler()
+{
+    httpd_unregister_uri_handler(serverHandle, uri.uri, uri.method);
+}
 
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &connect_handler, &server));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, &disconnect_handler, &server));
+esp_err_t WsHandler::handler(httpd_req *req)
+{
+    if((not pWsHandler->pWebLoggerRx) or (pWsHandler->pWebLoggerRx->fd != httpd_req_to_sockfd(req)))
+    {
+        pWsHandler->pWebLoggerRx.reset();
+        pWsHandler->pWebLoggerRx = std::make_unique<WebLoggerRx>(httpd_req_to_sockfd(req), req->handle, pWsHandler->rxQ);
+        pWsHandler->pWebLoggerRx->start();
+    }
 
-    /* Start the server for the first time */
-    server = start_webserver();
+    static constexpr uint32_t cBufferLeng = 128;
+    std::vector<uint8_t> tx;
+    tx.resize(cBufferLeng);
+    httpd_ws_frame_t ws_pkt = {};
+    ws_pkt.payload = tx.data();
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+    esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, cBufferLeng);
+    
+    if(ret != ESP_OK) 
+    {
+        ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
+        return ret;
+    }
+    tx.resize(ws_pkt.len);
+    pWsHandler->txQ.push(tx, std::chrono::milliseconds(100));
+    return ret;
+}
+
+//*******************************************************************
+// WebLogger
+//*******************************************************************
+WebLogger::WebLogger() :
+    serverHandle(nullptr),
+    txQ(10),
+    rxQ(10),
+    pUartService(std::make_unique<UartService>(2))
+{
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, (esp_event_handler_t)&handler, this));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, (esp_event_handler_t)&handler, this));
+    pUartService->start(230400, txQ, rxQ);
+}
+
+WebLogger::~WebLogger()
+{
+
+}
+
+void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t event_id, void* event_data)
+{
+    if(event_base == IP_EVENT)
+    {
+        if(pLogger->serverHandle == nullptr)
+        {
+            httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+            // Start the httpd server
+            ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
+            if (httpd_start(&pLogger->serverHandle, &config) != ESP_OK)
+            {
+                ESP_LOGI(TAG, "Error starting server!");
+                return;
+            }
+            
+            // Registering the ws handler
+            ESP_LOGI(TAG, "Registering URI handlers");
+            //httpd_register_uri_handler(pLogger->serverHandle, &ws);
+            pLogger->pLoggerHandler.reset();
+            pLogger->pLoggerHandler = std::make_unique<WsHandler>(pLogger->serverHandle, pLogger->txQ, pLogger->rxQ);
+            pLogger->pIndexHandler.reset();
+            pLogger->pIndexHandler = std::make_unique<IndexHandler>(pLogger->serverHandle);
+
+        }
+    }
+    else if(event_base == WIFI_EVENT)
+    {
+        pLogger->pIndexHandler.reset();
+        pLogger->pLoggerHandler.reset();
+        httpd_stop(pLogger->serverHandle);
+        pLogger->serverHandle = nullptr;
+    }
+}
+
+//*******************************************************************
+
+void start_logger_web()
+{
+    static WebLogger logger;
 }
