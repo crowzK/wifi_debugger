@@ -165,7 +165,6 @@ void UartService::start(int baudRate, BlockingQueue<std::vector<uint8_t>>& _txQ,
 
 void UartService::stop()
 {
-    uart_driver_delete(cUartNum);
     if(txTask.isRun())
     {
         txTask.stop();
@@ -174,6 +173,7 @@ void UartService::stop()
     {
         rxTask.stop();
     }
+    uart_driver_delete(cUartNum);
 }
 
 ////////////////////////////////////////////////////////////////////

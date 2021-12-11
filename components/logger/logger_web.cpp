@@ -20,6 +20,7 @@
 #include "logger_web.hpp"
 #include <memory>
 #include <algorithm>
+#include <string>
 
 /* A simple example that demonstrates using websocket echo server
  */
@@ -161,7 +162,7 @@ void WebLoggerRx::thread()
 //*******************************************************************
 WsHandler* WsHandler::pWsHandler;
 
-WsHandler::WsHandler(httpd_handle_t server, BlockingQueue<std::vector<uint8_t>>& txQ, BlockingQueue<std::vector<uint8_t>>& rxQ) :
+WsHandler::WsHandler(httpd_handle_t server, BlockingQueue<std::vector<uint8_t>>& txQ, BlockingQueue<std::vector<uint8_t>>& rxQ, ConnectCb&& cb) :
     serverHandle(server),
     uri{.uri        = "/ws",
         .method     = HTTP_GET,
@@ -169,7 +170,8 @@ WsHandler::WsHandler(httpd_handle_t server, BlockingQueue<std::vector<uint8_t>>&
         .user_ctx   = this,
         .is_websocket = true},
     txQ(txQ),
-    rxQ(rxQ)
+    rxQ(rxQ),
+    cb(cb)
 {
     pWsHandler = this;
     httpd_register_uri_handler(serverHandle, &uri);
@@ -203,6 +205,24 @@ esp_err_t WsHandler::handler(httpd_req *req)
         ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
         return ret;
     }
+
+    if(tx[0] == 17)
+    {
+        std::string delimiter = " ";
+        std::string cmd((char*)(tx.data() + 1));
+        size_t pos = cmd.find(delimiter);
+        std::string baud = cmd.substr(0, pos);
+        std::string port = cmd.substr(pos + 5, cmd.length());
+        int nbaud = std::stoi(baud);
+        int nport = std::stoi(port);
+        ESP_LOGI(TAG, "connect[%s] baud:%d port:%d", tx.data() + 1, nbaud, nport);
+        if(pWsHandler->cb)
+        {
+            pWsHandler->cb(nport, nbaud);
+        }
+        return ret;
+    }
+
     tx.resize(ws_pkt.len);
     pWsHandler->txQ.push(tx, std::chrono::milliseconds(100));
     return ret;
@@ -214,12 +234,10 @@ esp_err_t WsHandler::handler(httpd_req *req)
 WebLogger::WebLogger() :
     serverHandle(nullptr),
     txQ(10),
-    rxQ(10),
-    pUartService(std::make_unique<UartService>(2))
+    rxQ(10)
 {
     ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, (esp_event_handler_t)&handler, this));
     ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, (esp_event_handler_t)&handler, this));
-    pUartService->start(230400, txQ, rxQ);
 }
 
 WebLogger::~WebLogger()
@@ -247,7 +265,13 @@ void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t
             ESP_LOGI(TAG, "Registering URI handlers");
             //httpd_register_uri_handler(pLogger->serverHandle, &ws);
             pLogger->pLoggerHandler.reset();
-            pLogger->pLoggerHandler = std::make_unique<WsHandler>(pLogger->serverHandle, pLogger->txQ, pLogger->rxQ);
+            pLogger->pLoggerHandler = std::make_unique<WsHandler>(pLogger->serverHandle, pLogger->txQ, pLogger->rxQ,
+                [&pLogger](int port, int baudrate)
+                {
+                    pLogger->pUartService.reset();
+                    pLogger->pUartService = std::make_unique<UartService>(port);
+                    pLogger->pUartService->start(baudrate, pLogger->txQ, pLogger->rxQ);
+                });
             pLogger->pIndexHandler.reset();
             pLogger->pIndexHandler = std::make_unique<IndexHandler>(pLogger->serverHandle);
 

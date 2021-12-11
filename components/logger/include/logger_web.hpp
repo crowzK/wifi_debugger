@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <list>
+#include <functional>
 #include "esp_http_server.h"
 #include "uart.hpp"
 #include "../../blocking_queue/include/blocking_queue.hpp"
@@ -61,7 +62,8 @@ private:
 class WsHandler
 {
 public:
-    WsHandler(httpd_handle_t server, BlockingQueue<std::vector<uint8_t>>& txQ, BlockingQueue<std::vector<uint8_t>>& rxQ);
+    using ConnectCb = std::function<void(int port, int baudrate)>;
+    WsHandler(httpd_handle_t server, BlockingQueue<std::vector<uint8_t>>& txQ, BlockingQueue<std::vector<uint8_t>>& rxQ, ConnectCb&& cb);
     ~WsHandler();
 
 protected:
@@ -71,6 +73,7 @@ protected:
     std::unique_ptr<WebLoggerRx> pWebLoggerRx;
     BlockingQueue<std::vector<uint8_t>>& txQ;
     BlockingQueue<std::vector<uint8_t>>& rxQ;
+    ConnectCb cb;
     static esp_err_t handler(httpd_req *req);
 };
 

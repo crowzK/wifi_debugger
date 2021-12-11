@@ -5,6 +5,10 @@
   .setting {
     height: 22px;
   }
+  .settingLable {
+    display: inline-block;
+    width:60px;
+  }
   .button {
     height: 22px; 
     width: 100px; 
@@ -38,22 +42,34 @@
       websocket.onopen = function(evt) { onOpen(evt) };
       websocket.onclose = function(evt) { onClose(evt) }; 
       websocket.onmessage = function(evt) { onMessage(evt) };
-      websocket.onerror = function(evt) { onError(evt) }; 
-      stat.innerText = "Connected"
-      isConnact = true;
+      websocket.onerror = function(evt) { onError(evt) };
     }
     else
     {
-      stat.innerText = "Not Connected"
-      isConnact = false;
       websocket.close(); 
     }
   }
 
   function onOpen(evt) {
+    stat.innerText = "Connected"
+      isConnact = true;
+      var port =  document.getElementById("port");
+      var baud =  document.getElementById("baudrate");
+      baud.disabled = true;
+      port.disabled = true;
+      msg = String.fromCharCode(17) + baud.value + " " + port.value;
+      doSend(msg);
+      document.getElementById("connect").innerText = "Disconnect";
   }  
 
   function onClose(evt) {
+      stat.innerText = "Not Connected"
+      document.getElementById("connect").innerText = "Connect";
+      var port =  document.getElementById("port");
+      var baud =  document.getElementById("baudrate");
+      baud.disabled = false;
+      port.disabled = false;
+      isConnact = false;
   } 
 
   function onMessage(evt) { 
@@ -63,7 +79,7 @@
    } 
 
   function onError(evt) { 
-    stat.innerText = '<span style="color: red;">ERROR:</span> ' + evt.data;
+    stat.innerHTML = '<span style="color: red;">ERROR:</span> ' + evt.data;
   } 
 
   function doSend(message) {
@@ -159,30 +175,31 @@
 </script>
 <h2 style="height: 22px">Debug Console</h2>
 <body style="overflow-y:auto">
-    <div id="left" style="width:300px; float: left">
+    <div style="width:300px; float: left">
+      <div class="setting" id="status">def</div>
         <div class="setting">
-          <label>Port:</label>
-          <select name="port">
+          <label class="settingLable">Port</label>
+          <select name="port" id="port">
             <option value="UART2">UART2</option>
             <option value="UART1">UART1</option>
+            <option value="UART0">UART0</option>
           </select>
         </div>
         <div class="setting">
-          <label>Baudrate:</label>
-          <select name="baudrate">
+          <label class="settingLable">Baudrate</label>
+          <select name="baudrate" id="baudrate">
             <option value="230400">230400</option>
             <option value="115200">115200</option>
             <option value="921600">921600</option>
           </select>
         </div>
-        <div class="setting" id="status">def</div>
     </div>
-    <div id="right" style="width:100px; float: left">
-      <button type="button" onclick="connect()" class="button">Connect</button>
+    <div style="width:100px; float: left">
+      <button type="button" onclick="connect()" class="button" id="connect">Connect</button>
       <button type="button" onclick="saveLogFile()" class="button">Save Log</button>
       <button type="button" onclick="cleareLog()" class="button">Cleare Log</button>
     </div>
-  <div id="output" style="overflow-y:auto; overflow-x:hidden; width:100%; height: calc(100% - 80px); border: 1px solid; margin-top: 10px;"></div>
+  <div id="output" style="overflow-y:auto; overflow-x:hidden; width:100%; height: calc(100% - 120px); border: 1px solid; margin-top: 10px;"></div>
 </body>
 
 </html>
