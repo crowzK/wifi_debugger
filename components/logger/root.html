@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html">
 <meta charset="utf-8" />  
 <title>WIFI logger</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -125,12 +125,12 @@
 
 </script>
 
-<h2>Debug Console</h2>
+<h2 style="height: 22px">Debug Console</h2>
 
-<body>
-  <button type="button" onclick="saveLogFile()">Save Log</button>
-  <button type="button" onclick="cleareLog()">Cleare Log</button>
-  <div id="output" style="overflow-y:auto; overflow-x:hidden; width:100%; height:800px; border: 1px solid;"></div>
+<body style="overflow-y:auto">
+  <button type="button" onclick="saveLogFile()" style="height: 22px">Save Log</button>
+  <button type="button" onclick="cleareLog()" style="height: 22px">Cleare Log</button>
+  <div id="output" style="overflow-y:auto; overflow-x:hidden; width:100%; height: calc(100% - 80px); border: 1px solid; margin-top: 10px;"></div>
 </body>
 
 </html>
