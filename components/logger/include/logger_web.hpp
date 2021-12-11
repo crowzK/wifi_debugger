@@ -6,6 +6,8 @@
 #include <atomic>
 #include <thread>
 #include <memory>
+#include <mutex>
+#include <list>
 #include "esp_http_server.h"
 #include "uart.hpp"
 #include "../../blocking_queue/include/blocking_queue.hpp"
@@ -37,18 +39,20 @@ protected:
 class WebLoggerRx
 {
 public:
-    const int fd;
     const httpd_handle_t hd;
 
-    WebLoggerRx(int fd, httpd_handle_t hd, BlockingQueue<std::vector<uint8_t>>& queue);
+    WebLoggerRx(httpd_handle_t hd, BlockingQueue<std::vector<uint8_t>>& queue);
     ~WebLoggerRx();
     void start();
     void stop();
     bool isRun() const;
+    void enroll(int fd);
 
 private:
     std::atomic<bool> run;
     std::thread threadHandle;
+    std::list<int> fds;
+    std::recursive_mutex mutex;
     BlockingQueue<std::vector<uint8_t>>& queue;
 
     void thread();

@@ -19,6 +19,7 @@
 #include "esp_netif.h"
 #include "logger_web.hpp"
 #include <memory>
+#include <algorithm>
 
 /* A simple example that demonstrates using websocket echo server
  */
@@ -77,8 +78,7 @@ esp_err_t IndexHandler::userHandler(httpd_req *req)
 //*******************************************************************
 // WebLoggerRx
 //*******************************************************************
-WebLoggerRx::WebLoggerRx(int _fd, httpd_handle_t _hd, BlockingQueue<std::vector<uint8_t>>& queue) :
-    fd(_fd),
+WebLoggerRx::WebLoggerRx(httpd_handle_t _hd, BlockingQueue<std::vector<uint8_t>>& queue) :
     hd(_hd),
     run(false),
     queue(queue)
@@ -109,6 +109,17 @@ void WebLoggerRx::stop()
     }
 }
 
+void WebLoggerRx::enroll(int fd)
+{
+    std::lock_guard<std::recursive_mutex> lock(mutex);
+    auto it = std::find(fds.begin(), fds.end(), fd);
+    if(it == fds.end())
+    {
+        ESP_LOGI("WebLoggerRx", "Add fd %d", fd);
+        fds.push_back(fd);
+    }
+}
+
 bool WebLoggerRx::isRun() const
 {
     return run;
@@ -124,13 +135,23 @@ void WebLoggerRx::thread()
         std::vector<uint8_t> msg;
         if(queue.pop(msg, std::chrono::milliseconds(1000)) and msg.size())
         {
+            std::lock_guard<std::recursive_mutex> lock(mutex);
             httpd_ws_frame_t ws_pkt;
             memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
             ws_pkt.payload = msg.data();
             ws_pkt.len = msg.size();
             ws_pkt.type = HTTPD_WS_TYPE_TEXT;
 
-            httpd_ws_send_frame_async(hd, fd, &ws_pkt);
+            auto it = fds.begin();
+            for(; it != fds.end(); ++it)
+            {
+                if(httpd_ws_send_frame_async(hd, *it, &ws_pkt) != ESP_OK)
+                {
+                    ESP_LOGI("WebLoggerRx", "Remove fd %d", *it);
+                    fds.erase(it);
+                    break;
+                }
+            }
         }
     }
 }
@@ -161,12 +182,13 @@ WsHandler::~WsHandler()
 
 esp_err_t WsHandler::handler(httpd_req *req)
 {
-    if((not pWsHandler->pWebLoggerRx) or (pWsHandler->pWebLoggerRx->fd != httpd_req_to_sockfd(req)))
+    if(not pWsHandler->pWebLoggerRx)
     {
         pWsHandler->pWebLoggerRx.reset();
-        pWsHandler->pWebLoggerRx = std::make_unique<WebLoggerRx>(httpd_req_to_sockfd(req), req->handle, pWsHandler->rxQ);
+        pWsHandler->pWebLoggerRx = std::make_unique<WebLoggerRx>(req->handle, pWsHandler->rxQ);
         pWsHandler->pWebLoggerRx->start();
     }
+    pWsHandler->pWebLoggerRx->enroll(httpd_req_to_sockfd(req));
 
     static constexpr uint32_t cBufferLeng = 128;
     std::vector<uint8_t> tx;
