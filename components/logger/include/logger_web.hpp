@@ -11,8 +11,7 @@
 #include <functional>
 #include "esp_http_server.h"
 #include "uart.hpp"
-#include "../../blocking_queue/include/blocking_queue.hpp"
-
+#include "blocking_queue.hpp"
 
 class UriHandler
 {
