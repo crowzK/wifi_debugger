@@ -20,6 +20,7 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
+#include "led.hpp"
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
@@ -35,6 +36,8 @@ static const char *TAG = "smartConfig";
 static void smartconfig_example_task(void * parm);
 
 static int rescan_count = 0;
+
+static Led statusLed(GPIO_NUM_2);
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -141,6 +144,7 @@ static void smartconfig_example_task(void * parm)
         uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | DISCONNECTED_BIT, true, false, portMAX_DELAY);
         if(uxBits & CONNECTED_BIT)
         {
+            statusLed.on();
             rescan_count = 0;
 
             ESP_LOGI(TAG, "WiFi Connected to ap");
@@ -157,6 +161,7 @@ static void smartconfig_example_task(void * parm)
         {
             if(++rescan_count > 5)
             {
+                statusLed.on(false);
                 ESP_LOGI(TAG, "smartconfig start");
                 esp_wifi_disconnect();
                 ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
@@ -165,6 +170,7 @@ static void smartconfig_example_task(void * parm)
             }
             else
             {
+                statusLed.toggle();
                 esp_wifi_connect();
             }
         }
