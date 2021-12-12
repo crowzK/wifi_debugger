@@ -1,0 +1,205 @@
+<!DOCTYPE html">
+<meta charset="utf-8" />  
+<title>WIFI logger</title>
+<style>
+  .setting {
+    height: 22px;
+  }
+  .settingLable {
+    display: inline-block;
+    width:60px;
+  }
+  .button {
+    height: 22px; 
+    width: 100px; 
+    margin: 1px;
+  }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script language="javascript" type="text/javascript">
+
+  var output;
+  var stat;
+  var isConnact = false;
+  
+  function init() {
+    output = document.getElementById("output");
+    stat = document.getElementById("status");
+    stat.innerText = "Not Connected"
+    var pre = document.createElement("pre");
+    pre.style.wordWrap = "break-word";
+    output.appendChild(pre);
+  }
+
+  function connect(connect) {
+    if(isConnact == false)
+    {
+      // console.log(window.location.host);
+      // todo use window.location.hostname to access websocket
+      //var wsUri = "ws://192.168.10.110/ws";
+      var wsUri = "ws://" + window.location.host + "/ws";
+      websocket = new WebSocket(wsUri);
+      websocket.onopen = function(evt) { onOpen(evt) };
+      websocket.onclose = function(evt) { onClose(evt) }; 
+      websocket.onmessage = function(evt) { onMessage(evt) };
+      websocket.onerror = function(evt) { onError(evt) };
+    }
+    else
+    {
+      websocket.close(); 
+    }
+  }
+
+  function onOpen(evt) {
+    stat.innerText = "Connected"
+      isConnact = true;
+      var port =  document.getElementById("port");
+      var baud =  document.getElementById("baudrate");
+      baud.disabled = true;
+      port.disabled = true;
+      msg = String.fromCharCode(17) + baud.value + " " + port.value;
+      doSend(msg);
+      document.getElementById("connect").innerText = "Disconnect";
+  }  
+
+  function onClose(evt) {
+      stat.innerText = "Not Connected"
+      document.getElementById("connect").innerText = "Connect";
+      var port =  document.getElementById("port");
+      var baud =  document.getElementById("baudrate");
+      baud.disabled = false;
+      port.disabled = false;
+      isConnact = false;
+  } 
+
+  function onMessage(evt) { 
+    //writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>'); 
+    writeToScreen(evt.data); 
+    // websocket.close(); 
+   } 
+
+  function onError(evt) { 
+    stat.innerHTML = '<span style="color: red;">ERROR:</span> ' + evt.data;
+  } 
+
+  function doSend(message) {
+    if(isConnact == true)
+    {
+      websocket.send(message);
+    }
+  } 
+
+  function writeToScreen(message) {
+    output.childNodes[0].innerText += message;
+    output.scrollTop = output.scrollHeight;
+  }
+
+  function saveLogFile() {
+    var strList = new Array()
+    for( var i = 0; i < output.childNodes.length; i++ )
+    {
+      strList.push(output.childNodes[i].innerText);
+    }
+    
+    var strs = strList.join();
+    var blob = new Blob([strs], { type: "text/plain;charset=utf-8" });
+    saveAs(blob, "log.log");
+  }
+
+  function cleareLog() {
+    output.childNodes[0].innerText = ""
+  }
+
+  function preventDefaultKeys(event) {
+    if((event.code === 'Space') || (event.code === 'Enter') || (event.code === 'KeyR')) {
+      event.preventDefault();
+    }
+  }
+
+  window.addEventListener("load", init, false);
+
+  window.onkeydown = (e) => {
+    preventDefaultKeys(e);
+
+    if(e.key.length != 1)
+    {
+      switch(e.key)
+      {
+        case 'Enter':
+          doSend('\n');
+          return;
+        default:
+          return;
+      }
+    }
+    var ctrlKey = '\0';
+    switch(e.key)
+    {
+      case 'c':
+        ctrlKey = String.fromCharCode(3);
+        break;
+      case 'r':
+        ctrlKey = String.fromCharCode(18);
+        break;
+      case 'v':
+        ctrlKey = String.fromCharCode(22);
+        break;
+      default:
+        break;
+    }
+
+    if((e.ctrlKey == true) && (ctrlKey != '\0'))
+    {
+      doSend(ctrlKey);
+    }
+    else
+    {
+      doSend(e.key);
+    }
+  }
+  
+  window.onkeyup = (e) => {
+    preventDefaultKeys(e);
+  }
+
+  window.addEventListener("unload", function () {
+    if(isConnact == true)
+    {
+      if(websocket.readyState == WebSocket.OPEN)
+      {
+        connect(false);
+      }
+    }
+  });
+
+</script>
+<h2 style="height: 22px">Debug Console</h2>
+<body style="overflow-y:auto">
+    <div style="width:300px; float: left">
+      <div class="setting" id="status">def</div>
+        <div class="setting">
+          <label class="settingLable">Port</label>
+          <select name="port" id="port">
+            <option value="UART2">UART2</option>
+            <option value="UART1">UART1</option>
+            <option value="UART0">UART0</option>
+          </select>
+        </div>
+        <div class="setting">
+          <label class="settingLable">Baudrate</label>
+          <select name="baudrate" id="baudrate">
+            <option value="230400">230400</option>
+            <option value="115200">115200</option>
+            <option value="921600">921600</option>
+          </select>
+        </div>
+    </div>
+    <div style="width:100px; float: left">
+      <button type="button" onclick="connect()" class="button" id="connect">Connect</button>
+      <button type="button" onclick="saveLogFile()" class="button">Save Log</button>
+      <button type="button" onclick="cleareLog()" class="button">Cleare Log</button>
+    </div>
+  <div id="output" style="overflow-y:auto; overflow-x:hidden; width:100%; height: calc(100% - 120px); border: 1px solid; margin-top: 10px;"></div>
+</body>
+
+</html>
