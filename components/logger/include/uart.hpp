@@ -4,7 +4,7 @@
 #include <vector>
 #include <thread>
 #include <atomic>
-#include "../../blocking_queue/include/blocking_queue.hpp"
+#include "blocking_queue.hpp"
 
 class UartThread
 {
