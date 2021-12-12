@@ -16,7 +16,7 @@
 #include "driver/gpio.h"
 #include "uart.hpp"
 
-#include "../blocking_queue/include/blocking_queue.hpp"
+#include "blocking_queue.hpp"
 
 static const int RX_BUF_SIZE = 1024;
 

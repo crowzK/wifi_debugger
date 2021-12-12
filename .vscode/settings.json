@@ -10,7 +10,12 @@
     "task.h": "c",
     "freertos.h": "c",
     "telnet.h": "c",
-    "*.inc": "c"
+    "*.inc": "c",
+    "memory": "cpp",
+    "random": "cpp",
+    "optional": "cpp",
+    "*.ipp": "cpp"
   },
-  "idf.flashType": "UART"
+  "idf.flashType": "UART",
+  "idf.adapterTargetName": "esp32"
 }
