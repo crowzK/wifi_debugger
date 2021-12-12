@@ -1,11 +1,3 @@
-/* UART asynchronous example, that uses separate RX and TX tasks
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
 #include <thread>
 #include <memory>
 
@@ -176,17 +168,4 @@ void UartService::stop()
         rxTask.stop();
     }
     uart_driver_delete(cUartNum);
-}
-
-////////////////////////////////////////////////////////////////////
-// start_uart_service
-////////////////////////////////////////////////////////////////////
-void start_uart_service(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ)
-{
-    static UartService uartService(UART_NUM_2);
-
-    if(not uartService.isRun())
-    {
-        uartService.start(230400, _txQ, _rxQ);
-    }
 }

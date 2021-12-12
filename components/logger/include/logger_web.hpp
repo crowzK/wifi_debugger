@@ -12,6 +12,7 @@
 #include "esp_http_server.h"
 #include "uart.hpp"
 #include "blocking_queue.hpp"
+#include "esp_event.h"
 
 class UriHandler
 {
@@ -55,6 +56,8 @@ private:
     std::recursive_mutex mutex;
     BlockingQueue<std::vector<uint8_t>>& queue;
 
+    void getTime(char* buffer);
+    void sendMsg(const std::vector<uint8_t>&msg);
     void thread();
 };
 
