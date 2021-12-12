@@ -56,7 +56,11 @@ public:
     void start(int baudRate, BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ);
     void stop();
 
+    int getPort() const {return cUartNum;};
+    int getBaudRate() const {return mBaudRate;};
+
 protected:
+    int mBaudRate;
     const int cUartNum;
     UartTx txTask;
     UartRx rxTask;

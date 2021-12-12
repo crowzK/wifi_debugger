@@ -268,6 +268,12 @@ void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t
             pLogger->pLoggerHandler = std::make_unique<WsHandler>(pLogger->serverHandle, pLogger->txQ, pLogger->rxQ,
                 [&pLogger](int port, int baudrate)
                 {
+                    if((pLogger->pUartService)
+                        and (pLogger->pUartService->getPort() == port)
+                        and (pLogger->pUartService->getBaudRate() == baudrate))
+                    {
+                        return;
+                    }
                     pLogger->pUartService.reset();
                     pLogger->pUartService = std::make_unique<UartService>(port);
                     pLogger->pUartService->start(baudrate, pLogger->txQ, pLogger->rxQ);

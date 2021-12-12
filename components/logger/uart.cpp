@@ -119,6 +119,7 @@ void UartRx::thread(BlockingQueue<std::vector<uint8_t>>& queue)
 // UartService
 ////////////////////////////////////////////////////////////////////
 UartService::UartService(int uartPortNum) :
+    mBaudRate(0),
     cUartNum(uartPortNum),
     txTask(uartPortNum),
     rxTask(uartPortNum)
@@ -138,6 +139,7 @@ bool UartService::isRun() const
 
 void UartService::start(int baudRate, BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ)
 {
+    mBaudRate = baudRate;
     const uart_config_t uart_config = 
     {
         .baud_rate = baudRate,
