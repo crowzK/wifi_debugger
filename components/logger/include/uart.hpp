@@ -66,6 +66,4 @@ protected:
     UartRx rxTask;
 };
 
-void start_uart_service(BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ);
-
 #endif //UASRT_HPP

@@ -1,12 +1,3 @@
-/* WebSocket Echo Server Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
-*/
-
 #include "esp_http_server.h"
 #include <esp_wifi.h>
 #include <esp_event.h>
@@ -21,6 +12,7 @@
 #include <memory>
 #include <algorithm>
 #include <string>
+#include <ctime>
 
 /* A simple example that demonstrates using websocket echo server
  */
@@ -116,7 +108,7 @@ void WebLoggerRx::enroll(int fd)
     auto it = std::find(fds.begin(), fds.end(), fd);
     if(it == fds.end())
     {
-        ESP_LOGI("WebLoggerRx", "Add fd %d", fd);
+        ESP_LOGI(TAG, "Add fd %d", fd);
         fds.push_back(fd);
     }
 }
@@ -126,32 +118,71 @@ bool WebLoggerRx::isRun() const
     return run;
 }
 
+void WebLoggerRx::getTime(char* buffer)
+{
+    struct timeval tv_now;
+    gettimeofday(&tv_now, NULL);
+
+    std::time_t t = tv_now.tv_sec;
+    tm local = *localtime(&t);
+    int ms = tv_now.tv_usec / 1000;
+
+    sprintf(buffer, "[%02d:%02d:%02d:%03d]", local.tm_hour, local.tm_min, local.tm_sec, ms);
+    buffer[14] = ' ';
+}
+
+void WebLoggerRx::sendMsg(const std::vector<uint8_t>&msg)
+{  
+    httpd_ws_frame_t ws_pkt = {};
+    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+    ws_pkt.payload = (uint8_t*)msg.data();
+    ws_pkt.len = msg.size();
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+
+    auto it = fds.begin();
+    for(; it != fds.end(); ++it)
+    {
+        if(httpd_ws_send_frame_async(hd, *it, &ws_pkt) != ESP_OK)
+        {
+            ESP_LOGI(TAG, "Remove fd %d", *it);
+            fds.erase(it);
+            break;
+        }
+    }
+}
+
 void WebLoggerRx::thread()
 {
-    esp_log_level_set("WebLoggerRx", ESP_LOG_INFO);
-    ESP_LOGI("WebLoggerRx", "start");
-
+    esp_log_level_set(TAG, ESP_LOG_INFO);
+    ESP_LOGI(TAG, "start");
+    static constexpr uint32_t timeStrLen = 15;
+	std::vector<uint8_t> strBuffer;
+	strBuffer.reserve(512);
+    strBuffer.resize(timeStrLen);
     while (run) 
     {
         std::vector<uint8_t> msg;
         if(queue.pop(msg, std::chrono::milliseconds(1000)) and msg.size())
         {
             std::lock_guard<std::recursive_mutex> lock(mutex);
-            httpd_ws_frame_t ws_pkt;
-            memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
-            ws_pkt.payload = msg.data();
-            ws_pkt.len = msg.size();
-            ws_pkt.type = HTTPD_WS_TYPE_TEXT;
 
-            auto it = fds.begin();
-            for(; it != fds.end(); ++it)
+            for(int i = 0; i < msg.size(); ++i)
             {
-                if(httpd_ws_send_frame_async(hd, *it, &ws_pkt) != ESP_OK)
-                {
-                    ESP_LOGI("WebLoggerRx", "Remove fd %d", *it);
-                    fds.erase(it);
-                    break;
-                }
+                uint8_t d = msg[i];
+				if(d == '\r')
+				{
+					continue;
+				}
+				if(d == '\n' or strBuffer.size() >= 512)
+				{
+					strBuffer.push_back('\r');
+					strBuffer.push_back('\n');
+					getTime((char*)&strBuffer[0]);
+                    sendMsg(strBuffer);
+                    strBuffer.resize(timeStrLen);
+					continue;
+				}
+				strBuffer.push_back(d);
             }
         }
     }
