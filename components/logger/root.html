@@ -34,25 +34,16 @@
     var pre = document.createElement("pre");
     pre.style.wordWrap = "break-word";
     output.appendChild(pre);
-  }
 
-  function connect(connect) {
-    if(isConnact == false)
-    {
-      // console.log(window.location.host);
-      // todo use window.location.hostname to access websocket
-      //var wsUri = "ws://192.168.10.110/ws";
-      var wsUri = "ws://" + window.location.host + "/ws";
-      websocket = new WebSocket(wsUri);
-      websocket.onopen = function(evt) { onOpen(evt) };
-      websocket.onclose = function(evt) { onClose(evt) }; 
-      websocket.onmessage = function(evt) { onMessage(evt) };
-      websocket.onerror = function(evt) { onError(evt) };
-    }
-    else
-    {
-      websocket.close(); 
-    }
+    // console.log(window.location.host);
+    // todo use window.location.hostname to access websocket
+    //var wsUri = "ws://192.168.10.200/ws";
+    var wsUri = "ws://" + window.location.host + "/ws";
+    websocket = new WebSocket(wsUri);
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) }; 
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
   }
 
   function onOpen(evt) {
@@ -84,7 +75,7 @@
    } 
 
   function onError(evt) { 
-    stat.innerHTML = '<span style="color: red;">ERROR:</span> ' + evt.data;
+    stat.innerHTML = "ERROR [" + evt.data + "]"
   } 
 
   function doSend(message) {
@@ -218,7 +209,6 @@
         </div>
     </div>
     <div style="width:100px; float: left">
-      <button type="button" onclick="connect()" class="button" id="connect">Connect</button>
       <button type="button" onclick="saveLogFile()" class="button">Save Log</button>
       <button type="button" onclick="cleareLog()" class="button">Cleare Log</button>
     </div>
