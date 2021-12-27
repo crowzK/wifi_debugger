@@ -48,19 +48,17 @@
 
   function onOpen(evt) {
     stat.innerText = "Connected"
-      isConnact = true;
-      var port =  document.getElementById("port");
-      var baud =  document.getElementById("baudrate");
-      baud.disabled = true;
-      port.disabled = true;
-      msg = String.fromCharCode(17) + baud.value + " " + port.value;
-      doSend(msg);
-      document.getElementById("connect").innerText = "Disconnect";
-  }  
+    isConnact = true;
+    var port =  document.getElementById("port");
+    var baud =  document.getElementById("baudrate");
+    baud.disabled = true;
+    port.disabled = true;
+    //msg = String.fromCharCode(17) + baud.value + " " + port.value;
+    //doSend(msg);
+  } 
 
   function onClose(evt) {
       stat.innerText = "Not Connected"
-      document.getElementById("connect").innerText = "Connect";
       var port =  document.getElementById("port");
       var baud =  document.getElementById("baudrate");
       baud.disabled = false;

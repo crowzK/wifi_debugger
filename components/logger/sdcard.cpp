@@ -127,7 +127,7 @@ FILE* SdCard::createFile()
             return nullptr;
         }
     }
-    path << "/" << local.tm_year << "-"  << local.tm_mon << "-" << local.tm_mday << "T" << local.tm_hour << ":" << local.tm_min << ":" << local.tm_sec << ".log";
+    path << "/" << local.tm_year << "-"  << local.tm_mon << "-" << local.tm_mday << "T" << local.tm_hour << "_" << local.tm_min << "_" << local.tm_sec << ".log";
     ESP_LOGI(TAG, "File Open(%s)", path.str().c_str());
     return fopen(path.str().c_str(), "w");
 }
