@@ -121,9 +121,9 @@ void DebugMsgRx::getTime(std::vector<uint8_t>& msg)
     tm local = *localtime(&t);
     int ms = tv_now.tv_usec / 1000;
 
-    msg.resize(15);
-    sprintf((char*)msg.data(), "[%02d:%02d:%02d:%03d]", local.tm_hour, local.tm_min, local.tm_sec, ms);
-    msg[14] = ' ';
+    msg.resize(18);
+    sprintf((char*)msg.data(), "[%02dT%02d:%02d:%02d:%03d]", local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec, ms);
+    msg[17] = ' ';
 }
 
 void DebugMsgRx::task()

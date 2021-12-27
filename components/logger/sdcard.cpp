@@ -93,6 +93,8 @@ FILE* SdCard::createFile()
     gettimeofday(&tv_now, NULL);
     std::time_t t = tv_now.tv_sec;
     tm local = *localtime(&t);
+    local.tm_year += 1900;
+    local.tm_mon += 1;
 
     std::ostringstream path;
     path << cMountPoint << "/log";
@@ -125,8 +127,8 @@ FILE* SdCard::createFile()
             return nullptr;
         }
     }
-
-    path << "/" << local.tm_hour << "_" << local.tm_min << "_" << local.tm_sec << ".log";
+    path << "/" << local.tm_year << "-"  << local.tm_mon << "-" << local.tm_mday << "T" << local.tm_hour << ":" << local.tm_min << ":" << local.tm_sec << ".log";
+    ESP_LOGI(TAG, "File Open(%s)", path.str().c_str());
     return fopen(path.str().c_str(), "w");
 }
 
@@ -138,6 +140,7 @@ bool SdCard::write(const char* msg, uint32_t length)
     }
     fwrite(msg, 1, length, pFile);
     fflush(pFile);
+    fsync(fileno(pFile));
     return true;
 }
 

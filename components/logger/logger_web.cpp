@@ -199,7 +199,6 @@ void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t
             pLogger->pLoggerHandler = std::make_unique<WsHandler>(pLogger->serverHandle);
             pLogger->pIndexHandler.reset();
             pLogger->pIndexHandler = std::make_unique<IndexHandler>(pLogger->serverHandle);
-
         }
     }
     else if(event_base == WIFI_EVENT)
@@ -216,6 +215,5 @@ void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t
 void start_logger_web()
 {
     static WebLogger logger;
-    static SdCard sdcard;
     UartService::get();
 }
