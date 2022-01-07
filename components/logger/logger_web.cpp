@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <string>
 #include <ctime>
+#include "cmd.hpp"
 
 /* A simple example that demonstrates using websocket echo server
  */
@@ -142,17 +143,31 @@ esp_err_t WsHandler::handler(httpd_req *req)
         return ret;
     }
 
-    if(tx[0] == 17)
+    Cmd cmd(tx.data(), ws_pkt.len);
+    if(cmd.getCmdType() == Cmd::Type::eClientToSever)
     {
-        std::string delimiter = " ";
-        std::string cmd((char*)(tx.data() + 1));
-        size_t pos = cmd.find(delimiter);
-        std::string baud = cmd.substr(0, pos);
-        std::string port = cmd.substr(pos + 5, cmd.length());
-        int nbaud = std::stoi(baud);
-        int nport = std::stoi(port);
-        ESP_LOGI(TAG, "connect[%s] baud:%d port:%d", tx.data() + 1, nbaud, nport);
-        UartService::get().init(UartService::Config{.baudRate = nbaud, .uartNum = nport});
+        switch(cmd.getSubCmd())
+        {
+        case Cmd::SubCmd::eUartSetting:
+        {
+            const auto cfg = UartService::get().getCfg();
+            UartSetting setting(cfg.baudRate, cfg.uartNum);
+            auto cmd = setting.getCmd();
+            httpd_ws_frame_t ws_pkt = {};
+            memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+            ws_pkt.payload = cmd.data();
+            ws_pkt.len = cmd.size();
+            ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+
+            if(httpd_ws_send_frame_async(req->handle, httpd_req_to_sockfd(req), &ws_pkt) != ESP_OK)
+            {
+                ESP_LOGE(TAG, "Error fd %d", (int)req->handle);
+            }
+            break;
+        }
+        default:
+            break;
+        }
         return ret;
     }
 
