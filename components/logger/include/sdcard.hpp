@@ -14,11 +14,11 @@ public:
     bool write(const std::vector<uint8_t>& msg) override;
 
 protected:
-    static constexpr int cPinMiso = 19;
-    static constexpr int cPinMosi = 23;
-    static constexpr int cPinClk = 18;
-    static constexpr int cPinCs = 4;
-    static constexpr int cSpiPort = 2;
+    static constexpr int cPinMiso = 2;
+    static constexpr int cPinMosi = 15;
+    static constexpr int cPinClk = 14;
+    static constexpr int cPinCs = 13;
+    static constexpr int cSpiPort = 1;
     static const char* cMountPoint;
     void* pSdcard;
     FILE* pFile;
