@@ -134,6 +134,11 @@ static void smartconfig_example_task(void * parm)
     wifi_config_t wifi_config;
 
     ESP_ERROR_CHECK( esp_wifi_get_config(WIFI_IF_STA, &wifi_config) );
+    if(strlen((char*)wifi_config.sta.ssid) == 0)
+    {
+        sprintf((char*)wifi_config.sta.ssid, "crowz.kr");
+        wifi_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    }
     ESP_LOGI(TAG, "SSID:%s", wifi_config.sta.ssid);
     ESP_LOGI(TAG, "PASSWORD:%s", wifi_config.sta.password);
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
