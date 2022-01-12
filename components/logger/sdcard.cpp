@@ -12,6 +12,7 @@
 #include "sdkconfig.h"
 #include "driver/sdmmc_host.h"
 #include <sstream>
+#include "status.hpp"
 
 
 static const char *TAG = "sdcard";
@@ -23,6 +24,7 @@ SdCard::SdCard() :
     pFile(nullptr),
     mInited(false)
 {
+    Status::get().report(Status::Error::eSdcard, true);
 #if CONFIG_SPI_SDCARD_SUPPORT
     esp_err_t ret;
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -77,6 +79,7 @@ SdCard::SdCard() :
     }
     sdmmc_card_print_info(stdout, (sdmmc_card_t*)pSdcard);
     mInited = true;
+    Status::get().report(Status::Error::eSdcard, false);
 #endif
 }
 
