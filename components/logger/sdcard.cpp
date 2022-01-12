@@ -20,8 +20,10 @@ const char* SdCard::cMountPoint = "/sdcard";
 SdCard::SdCard() :
     Client(DebugMsgRx::get(), INT32_MAX),
     pSdcard(nullptr),
-    pFile(nullptr)
+    pFile(nullptr),
+    mInited(false)
 {
+#if CONFIG_SPI_SDCARD_SUPPORT
     esp_err_t ret;
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
@@ -31,12 +33,12 @@ SdCard::SdCard() :
     ESP_LOGI(TAG, "Initializing SD card");
 
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    host.slot = cSpiPort;
+    host.slot = CONFIG_SPI_SCARD_PORT;
 
     spi_bus_config_t bus_cfg = {
-        .mosi_io_num = cPinMosi,
-        .miso_io_num = cPinMiso,
-        .sclk_io_num = cPinClk,
+        .mosi_io_num = CONFIG_SPI_SCARD_PIN_MOSI,
+        .miso_io_num = CONFIG_SPI_SCARD_PIN_MISO,
+        .sclk_io_num = CONFIG_SPI_SCARD_PIN_CLK,
         .quadwp_io_num = -1,
         .quadhd_io_num = -1,
         .max_transfer_sz = 4000,
@@ -51,8 +53,8 @@ SdCard::SdCard() :
     // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
     sdspi_device_config_t slot_config = 
     {
-        .host_id = (spi_host_device_t)cSpiPort,
-        .gpio_cs = (gpio_num_t)cPinCs,
+        .host_id = (spi_host_device_t)CONFIG_SPI_SCARD_PORT,
+        .gpio_cs = (gpio_num_t)CONFIG_SPI_SCARD_PIN_CS,
         .gpio_cd = GPIO_NUM_NC,
         .gpio_wp = GPIO_NUM_NC,
         .gpio_int = GPIO_NUM_NC
@@ -74,21 +76,36 @@ SdCard::SdCard() :
         return;
     }
     sdmmc_card_print_info(stdout, (sdmmc_card_t*)pSdcard);
-    pFile = createFile();
+    mInited = true;
+#endif
 }
 
 SdCard::~SdCard()
 {
+#if CONFIG_SPI_SDCARD_SUPPORT
     if(pFile)
     {
         fclose(pFile);
     }
     esp_vfs_fat_sdcard_unmount(cMountPoint, (sdmmc_card_t*)pSdcard);
-    spi_bus_free((spi_host_device_t)cSpiPort);
+    spi_bus_free((spi_host_device_t)CONFIG_SPI_SCARD_PORT);
+#endif
+}
+
+void SdCard::init()
+{
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    if(not mInited)
+    {
+        return;
+    }
+    pFile = createFile();
 }
 
 FILE* SdCard::createFile()
 {
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+
     struct timeval tv_now;
     gettimeofday(&tv_now, NULL);
     std::time_t t = tv_now.tv_sec;
@@ -134,10 +151,12 @@ FILE* SdCard::createFile()
 
 bool SdCard::write(const char* msg, uint32_t length)
 {
-    if(pFile == nullptr)
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    if((not mInited) or (pFile == nullptr))
     {
         return true;
     }
+    
     fwrite(msg, 1, length, pFile);
     fflush(pFile);
     fsync(fileno(pFile));

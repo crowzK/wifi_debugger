@@ -16,9 +16,12 @@ extern "C" void app_main(void)
     tzset();
     start_logger_web();
 
+#if CONFIG_SPI_SDCARD_SUPPORT
+    static SdCard sdcard;
     while(sntp_getreachability(0) == 0)
     {
         vTaskDelay(100);
     }
-    static SdCard sdcard;
+    sdcard.init();
+#endif
 }

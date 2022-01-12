@@ -37,7 +37,7 @@ static void smartconfig_example_task(void * parm);
 
 static int rescan_count = 0;
 
-static Led statusLed(GPIO_NUM_2);
+static Led statusLed(static_cast<gpio_num_t>(CONFIG_STATUS_LED_PIN));
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
