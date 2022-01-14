@@ -143,6 +143,15 @@ FILE* SdCard::createFile()
             return nullptr;
         }
     }
+    path << "/" << local.tm_mday;
+    if(stat(path.str().c_str(), &_stat))
+    {
+        if(mkdir(path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+        {
+            ESP_LOGE(TAG, "Cannot create dir(%s)", path.str().c_str());
+            return nullptr;
+        }
+    }
     path << "/" << local.tm_year << "-"  << local.tm_mon << "-" << local.tm_mday << "T" << local.tm_hour << "_" << local.tm_min << "_" << local.tm_sec << ".log";
     ESP_LOGI(TAG, "File Open(%s)", path.str().c_str());
     return fopen(path.str().c_str(), "w");
