@@ -14,6 +14,7 @@
 #include <string>
 #include <ctime>
 #include "cmd.hpp"
+#include "file_server.hpp"
 
 /* A simple example that demonstrates using websocket echo server
  */
@@ -30,7 +31,10 @@ UriHandler::UriHandler(httpd_handle_t server, const char* uri, httpd_method_t me
         .user_ctx   = this
     }
 {
-    httpd_register_uri_handler(serverHandle, &this->uri);
+    if(esp_err_t err = httpd_register_uri_handler(serverHandle, &this->uri))
+    {
+        ESP_LOGE(TAG, "UriHandler start err [%d]", err);
+    }
 }
 
 UriHandler::~UriHandler()
@@ -40,6 +44,7 @@ UriHandler::~UriHandler()
 
 esp_err_t UriHandler::handler(httpd_req_t *req)
 {
+    ESP_LOGE(TAG, "handler");
     UriHandler* pHandle = reinterpret_cast<UriHandler*>(req->user_ctx);
     if(pHandle == nullptr)
     {
@@ -214,12 +219,15 @@ void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t
             pLogger->pLoggerHandler = std::make_unique<WsHandler>(pLogger->serverHandle);
             pLogger->pIndexHandler.reset();
             pLogger->pIndexHandler = std::make_unique<IndexHandler>(pLogger->serverHandle);
+            pLogger->pFileServerHandler.reset();
+            pLogger->pFileServerHandler = std::make_unique<FileServerHandler>(pLogger->serverHandle);
         }
     }
     else if(event_base == WIFI_EVENT)
     {
         pLogger->pIndexHandler.reset();
         pLogger->pLoggerHandler.reset();
+        pLogger->pFileServerHandler.reset();
         httpd_stop(pLogger->serverHandle);
         pLogger->serverHandle = nullptr;
     }
@@ -229,6 +237,6 @@ void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t
 
 void start_logger_web()
 {
-    //static WebLogger logger;
+    static WebLogger logger;
     UartService::get();
 }

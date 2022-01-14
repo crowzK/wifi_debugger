@@ -16,6 +16,8 @@
 #include "sdcard.hpp"
 #include "task.hpp"
 
+class FileServerHandler;
+
 class UriHandler
 {
 public:
@@ -75,6 +77,7 @@ protected:
     httpd_handle_t serverHandle;
     std::unique_ptr<IndexHandler> pIndexHandler;
     std::unique_ptr<WsHandler> pLoggerHandler;
+    std::unique_ptr<FileServerHandler> pFileServerHandler;
 
     static void handler(WebLogger* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
 };
