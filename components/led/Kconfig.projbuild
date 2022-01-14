@@ -1,9 +1,0 @@
-menu "STATUS LED"
-   
-    config STATUS_LED_PIN 
-        int "STATUS LED GPIO PIN"
-        default 22
-        help
-            GPIO number for status led 
-
-endmenu

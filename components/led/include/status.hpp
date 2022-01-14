@@ -20,6 +20,9 @@ public:
     bool getError(Error err);
 
 protected:
+#if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
+    static constexpr int cLedGpio = 22;
+#endif
     std::bitset<Error::eSize> mStatus;
     std::recursive_mutex mMutex;
     Led mLed;

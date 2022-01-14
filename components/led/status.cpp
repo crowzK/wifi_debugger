@@ -7,7 +7,7 @@ Status& Status::get()
 }
 
 Status::Status() :
-    mLed(static_cast<gpio_num_t>(CONFIG_STATUS_LED_PIN))
+    mLed(static_cast<gpio_num_t>(cLedGpio))
 {
 
 }
