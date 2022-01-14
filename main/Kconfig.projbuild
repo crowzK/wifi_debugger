@@ -1,0 +1,15 @@
+menu "ESP32 board options"
+
+    config M5STACK_CORE
+        bool "For M5STACK"
+        default y
+        help
+            using m5 stack core
+
+    config TTGO_T1
+        bool "For TTGO_T1"
+        default n
+        help
+            using ttgo t1 board
+
+endmenu
