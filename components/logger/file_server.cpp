@@ -28,16 +28,11 @@ extern "C"
 static const char *TAG = "file_server";
 
 const char* FileServerHandler::cBasePath = "/sdcard";
-FileServerHandler::FileServerHandler(httpd_handle_t server) :
-    UriHandler(server, "/log", HTTP_GET),
+FileServerHandler::FileServerHandler() :
+    UriHandler("/log", HTTP_GET),
     mBuffer(new std::array<char, SCRATCH_BUFSIZE>())
 {
-    ESP_LOGE(TAG, "FileServerHandler start");
-}
-
-FileServerHandler::~FileServerHandler()
-{
-
+    ESP_LOGI(TAG, "start");
 }
 
 esp_err_t FileServerHandler::userHandler(httpd_req *req)
@@ -59,11 +54,6 @@ esp_err_t FileServerHandler::userHandler(httpd_req *req)
         }
     }
     const char *filename = get_path_from_uri(filepath, cBasePath,uri, sizeof(filepath));
-
-    ESP_LOGE(TAG, "uri %s", req->uri);
-    ESP_LOGE(TAG, "uri %s", uri);
-    ESP_LOGE(TAG, "filename %s", filename);
-    ESP_LOGE(TAG, "filepath %s", filepath);
     
     if (!filename) {
         ESP_LOGE(TAG, "Filename is too long");
@@ -263,4 +253,9 @@ const char* FileServerHandler::get_path_from_uri(char *dest, const char *base_pa
 
     /* Return pointer to path, skipping the base */
     return dest + base_pathlen;
+}
+
+void start_file_server()
+{
+    static FileServerHandler fileSever;
 }

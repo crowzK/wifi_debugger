@@ -3,38 +3,13 @@
 
 #include <stdint.h>
 #include <vector>
-#include <atomic>
-#include <thread>
-#include <memory>
-#include <mutex>
-#include <list>
-#include <functional>
-#include "esp_http_server.h"
-#include "uart.hpp"
-#include "blocking_queue.hpp"
-#include "esp_event.h"
-#include "sdcard.hpp"
-#include "task.hpp"
-
-class FileServerHandler;
-
-class UriHandler
-{
-public:
-    const httpd_handle_t serverHandle;
-    const httpd_uri_t uri;
-    UriHandler(httpd_handle_t server, const char* uri, httpd_method_t method);
-    ~UriHandler();
-
-protected:
-    static esp_err_t handler(httpd_req_t *req);
-    virtual esp_err_t userHandler(httpd_req *req) = 0;
-};
+#include "web_server.hpp"
+#include "debug_msg_handler.hpp"
 
 class IndexHandler : public UriHandler
 {
 public:
-    IndexHandler(httpd_handle_t server);
+    IndexHandler();
     ~IndexHandler() = default;
 
 protected:
@@ -54,32 +29,16 @@ protected:
     bool write(const std::vector<uint8_t>& msg);
 };
 
-class WsHandler
+class WsHandler : public UriHandler
 {
 public:
-    WsHandler(httpd_handle_t server);
-    ~WsHandler();
+    WsHandler();
+    ~WsHandler() = default;
 
 protected:
-    const httpd_handle_t serverHandle;
-    const httpd_uri_t uri;
-    static esp_err_t handler(httpd_req *req);
-};
-
-
-class WebLogger
-{
-public:
-    WebLogger();
-    ~WebLogger();
-
-protected:
-    httpd_handle_t serverHandle;
-    std::unique_ptr<IndexHandler> pIndexHandler;
-    std::unique_ptr<WsHandler> pLoggerHandler;
-    std::unique_ptr<FileServerHandler> pFileServerHandler;
-
-    static void handler(WebLogger* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
+    // when web socket handler is called, the httpd_req->user_ctx is null, so it cannot use the userHandler
+    static esp_err_t wshandler(httpd_req *req);
+    esp_err_t userHandler(httpd_req *req) override { return ESP_OK; };
 };
 
 void start_logger_web();

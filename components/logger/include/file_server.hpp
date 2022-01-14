@@ -13,8 +13,8 @@
 class FileServerHandler : public UriHandler
 {
 public:
-    FileServerHandler(httpd_handle_t server);
-    ~FileServerHandler();
+    FileServerHandler();
+    ~FileServerHandler() = default;
 
 protected:
     static const char* cBasePath;
@@ -25,5 +25,7 @@ protected:
     const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize);
     esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath);
 };
+
+void start_file_server();
 
 #endif //FILE_SERVER_HPP

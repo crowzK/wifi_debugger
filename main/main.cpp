@@ -4,6 +4,8 @@
 #include "smart_config.hpp"
 #include "sntp.h"
 #include "sdkconfig.h"
+#include "sdcard.hpp"
+#include "file_server.hpp"
 
 esp_err_t start_file_server(const char *base_path);
 
@@ -20,6 +22,7 @@ extern "C" void app_main(void)
     start_logger_web();
 
     static SdCard sdcard;
+    start_file_server();
     while(sntp_getreachability(0) == 0)
     {
         vTaskDelay(100);
