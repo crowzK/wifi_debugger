@@ -229,6 +229,6 @@ void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t
 
 void start_logger_web()
 {
-    static WebLogger logger;
+    //static WebLogger logger;
     UartService::get();
 }
