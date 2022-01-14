@@ -201,8 +201,13 @@
     margin: 0px;
   }
 </style>
-<h2 style="height: 22px">Debug Console</h2>
+<h2 style="height: 22px">WIFI Debugger Console</h2>
 <body style="overflow-y:auto; margin: 5px">
+    <div style="width:44px; float: left; margin: 6px">
+      <form action="log?">
+        <input type="submit" value="Logs" />
+      </form>
+    </div>
     <div style="width:100px; float: left; margin: 5px">
       <button type="button" onclick="saveLogFile()" class="button">Save Log</button>
     </div>
