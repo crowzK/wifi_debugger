@@ -86,53 +86,27 @@ WebServer::WebServer() :
     serverHandle(nullptr)
 {
     ESP_LOGI(TAG, "start");
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, (esp_event_handler_t)&handler, this));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, (esp_event_handler_t)&handler, this));
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    // Start the httpd server
+    ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
+    if (httpd_start(&serverHandle, &config) != ESP_OK)
+    {
+        ESP_LOGI(TAG, "Error starting server!");
+        return;
+    }
+    
+    // Registering the ws handler
+    ESP_LOGI(TAG, "Registering URI handlers");
+    //httpd_register_uri_handler(serverHandle, &ws);
+
+    for(UriHandler* pHandler : mUriHandlers)
+    {
+        pHandler->start(serverHandle);
+    }
 }
 
 WebServer::~WebServer()
 {
 
-}
-
-void WebServer::handler(WebServer* pServer, esp_event_base_t event_base, int32_t event_id, void* event_data)
-{
-    std::lock_guard<std::recursive_mutex> lock(pServer->mMutex);
-
-    if(event_base == IP_EVENT)
-    {
-        if(pServer->serverHandle == nullptr)
-        {
-            httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
-            // Start the httpd server
-            ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
-            if (httpd_start(&pServer->serverHandle, &config) != ESP_OK)
-            {
-                ESP_LOGI(TAG, "Error starting server!");
-                return;
-            }
-            
-            // Registering the ws handler
-            ESP_LOGI(TAG, "Registering URI handlers");
-            //httpd_register_uri_handler(pServer->serverHandle, &ws);
-
-            for(UriHandler* pHandler : pServer->mUriHandlers)
-            {
-                pHandler->start(pServer->serverHandle);
-            }
-        }
-    }
-    else if(event_base == WIFI_EVENT)
-    {
-        if(pServer->serverHandle)
-        {
-            for(UriHandler* pHandler : pServer->mUriHandlers)
-            {
-                pHandler->stop(pServer->serverHandle);
-            }
-            httpd_stop(pServer->serverHandle);
-            pServer->serverHandle = nullptr;
-        }
-    }
 }
