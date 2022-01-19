@@ -167,96 +167,85 @@ static void wifi_prov_print_qr(const char *name, const char *pop, const char *tr
     ESP_LOGI(TAG, "If QR code is not visible, copy paste the below URL in a browser.\n%s?data=%s", QRCODE_BASE_URL, payload);
 }
 
-static void provision(bool force)
+static void provision()
 {
-    bool provisioned = false;
-    /* Let's find out if the device is provisioned */
-    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+    ESP_LOGI(TAG, "Starting provisioning");
 
-    /* If device is not yet provisioned start provisioning service */
-    if (!provisioned or force) {
-        ESP_LOGI(TAG, "Starting provisioning");
+    /* What is the Device Service Name that we want
+        * This translates to :
+        *     - Wi-Fi SSID when scheme is wifi_prov_scheme_softap
+        *     - device name when scheme is wifi_prov_scheme_ble
+        */
+    char service_name[12];
+    get_device_service_name(service_name, sizeof(service_name));
 
-        /* What is the Device Service Name that we want
-         * This translates to :
-         *     - Wi-Fi SSID when scheme is wifi_prov_scheme_softap
-         *     - device name when scheme is wifi_prov_scheme_ble
-         */
-        char service_name[12];
-        get_device_service_name(service_name, sizeof(service_name));
+    /* What is the security level that we want (0 or 1):
+        *      - WIFI_PROV_SECURITY_0 is simply plain text communication.
+        *      - WIFI_PROV_SECURITY_1 is secure communication which consists of secure handshake
+        *          using X25519 key exchange and proof of possession (pop) and AES-CTR
+        *          for encryption/decryption of messages.
+        */
+    wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
 
-        /* What is the security level that we want (0 or 1):
-         *      - WIFI_PROV_SECURITY_0 is simply plain text communication.
-         *      - WIFI_PROV_SECURITY_1 is secure communication which consists of secure handshake
-         *          using X25519 key exchange and proof of possession (pop) and AES-CTR
-         *          for encryption/decryption of messages.
-         */
-        wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
+    /* Do we want a proof-of-possession (ignored if Security 0 is selected):
+        *      - this should be a string with length > 0
+        *      - NULL if not used
+        */
+    const char *pop = "abcd1234";
 
-        /* Do we want a proof-of-possession (ignored if Security 0 is selected):
-         *      - this should be a string with length > 0
-         *      - NULL if not used
-         */
-        const char *pop = "abcd1234";
-
-        /* What is the service key (could be NULL)
-         * This translates to :
-         *     - Wi-Fi password when scheme is wifi_prov_scheme_softap
-         *     - simply ignored when scheme is wifi_prov_scheme_ble
-         */
-        const char *service_key = NULL;
+    /* What is the service key (could be NULL)
+        * This translates to :
+        *     - Wi-Fi password when scheme is wifi_prov_scheme_softap
+        *     - simply ignored when scheme is wifi_prov_scheme_ble
+        */
+    const char *service_key = NULL;
 
 #ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_BLE
-        /* This step is only useful when scheme is wifi_prov_scheme_ble. This will
-         * set a custom 128 bit UUID which will be included in the BLE advertisement
-         * and will correspond to the primary GATT service that provides provisioning
-         * endpoints as GATT characteristics. Each GATT characteristic will be
-         * formed using the primary service UUID as base, with different auto assigned
-         * 12th and 13th bytes (assume counting starts from 0th byte). The client side
-         * applications must identify the endpoints by reading the User Characteristic
-         * Description descriptor (0x2901) for each characteristic, which contains the
-         * endpoint name of the characteristic */
-        uint8_t custom_service_uuid[] = {
-            /* LSB <---------------------------------------
-             * ---------------------------------------> MSB */
-            0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf,
-            0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02,
-        };
-        wifi_prov_scheme_ble_set_service_uuid(custom_service_uuid);
+    /* This step is only useful when scheme is wifi_prov_scheme_ble. This will
+        * set a custom 128 bit UUID which will be included in the BLE advertisement
+        * and will correspond to the primary GATT service that provides provisioning
+        * endpoints as GATT characteristics. Each GATT characteristic will be
+        * formed using the primary service UUID as base, with different auto assigned
+        * 12th and 13th bytes (assume counting starts from 0th byte). The client side
+        * applications must identify the endpoints by reading the User Characteristic
+        * Description descriptor (0x2901) for each characteristic, which contains the
+        * endpoint name of the characteristic */
+    uint8_t custom_service_uuid[] = {
+        /* LSB <---------------------------------------
+            * ---------------------------------------> MSB */
+        0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf,
+        0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02,
+    };
+    wifi_prov_scheme_ble_set_service_uuid(custom_service_uuid);
 #endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_BLE */
 
-        /* An optional endpoint that applications can create if they expect to
-         * get some additional custom data during provisioning workflow.
-         * The endpoint name can be anything of your choice.
-         * This call must be made before starting the provisioning.
-         */
-        wifi_prov_mgr_endpoint_create("custom-data");
-        /* Start provisioning service */
-        ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(security, pop, service_name, service_key));
+    /* An optional endpoint that applications can create if they expect to
+        * get some additional custom data during provisioning workflow.
+        * The endpoint name can be anything of your choice.
+        * This call must be made before starting the provisioning.
+        */
+    wifi_prov_mgr_endpoint_create("custom-data");
+    /* Start provisioning service */
+    ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(security, pop, service_name, service_key));
 
-        /* The handler for the optional endpoint created above.
-         * This call must be made after starting the provisioning, and only if the endpoint
-         * has already been created above.
-         */
-        wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
+    /* The handler for the optional endpoint created above.
+        * This call must be made after starting the provisioning, and only if the endpoint
+        * has already been created above.
+        */
+    wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
 
-        /* Uncomment the following to wait for the provisioning to finish and then release
-         * the resources of the manager. Since in this case de-initialization is triggered
-         * by the default event loop handler, we don't need to call the following */
-        // wifi_prov_mgr_wait();
-        // wifi_prov_mgr_deinit();
-        /* Print QR code for provisioning */
+    /* Uncomment the following to wait for the provisioning to finish and then release
+        * the resources of the manager. Since in this case de-initialization is triggered
+        * by the default event loop handler, we don't need to call the following */
+    // wifi_prov_mgr_wait();
+    // wifi_prov_mgr_deinit();
+    /* Print QR code for provisioning */
 #ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_BLE
-        wifi_prov_print_qr(service_name, pop, PROV_TRANSPORT_BLE);
+    wifi_prov_print_qr(service_name, pop, PROV_TRANSPORT_BLE);
 #else /* CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP */
-        wifi_prov_print_qr(service_name, pop, PROV_TRANSPORT_SOFTAP);
+    wifi_prov_print_qr(service_name, pop, PROV_TRANSPORT_SOFTAP);
 #endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_BLE */
-    } else {
-        ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
 
-        /* Start Wi-Fi station */
-        wifi_init_sta();
-    }
 }
 
 void startProvisioning(void)
@@ -323,10 +312,22 @@ void startProvisioning(void)
      * configuration parameters set above */
     ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
 
-    bool force = false;
+    bool provisioned = false;
+    /* Let's find out if the device is provisioned */
+    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
+
     while(true)
     {
-        provision(force);
+        if(provisioned)
+        {
+            ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
+            /* Start Wi-Fi station */
+            wifi_init_sta();
+        }
+        else
+        {
+            provision();
+        }
 
         /* Wait for Wi-Fi connection */
         EventBits_t evt = xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_EVENT | WIFI_CONNECTED_EVENT, true, false, portMAX_DELAY);
@@ -335,7 +336,7 @@ void startProvisioning(void)
         {
             break;
         }
-        force = true;
+        provisioned = false;
     }
     /* We don't need the manager as device is already provisioned,
         * so let's release it's resources */
