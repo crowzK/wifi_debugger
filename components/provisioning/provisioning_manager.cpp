@@ -33,7 +33,9 @@ static const char *TAG = "app";
 
 /* Signal Wi-Fi events on this event-group */
 const int WIFI_CONNECTED_EVENT = BIT0;
+const int WIFI_DISCONNECTED_EVENT = BIT1;
 static EventGroupHandle_t wifi_event_group;
+static int retCount = 0; 
 
 #define PROV_QR_VERSION         "v1"
 #define PROV_TRANSPORT_SOFTAP   "softap"
@@ -97,8 +99,15 @@ static void event_handler(void* arg, esp_event_base_t event_base,
         /* Signal main application to continue execution */
         xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-        ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
-        esp_wifi_connect();
+        if(retCount++ < 5)
+        {
+            ESP_LOGI(TAG, "Disconnected (%d). Connecting to the AP again...", retCount);
+            esp_wifi_connect();
+        }
+        else
+        {
+            xEventGroupSetBits(wifi_event_group, WIFI_DISCONNECTED_EVENT);
+        }
     }
 }
 
@@ -158,76 +167,14 @@ static void wifi_prov_print_qr(const char *name, const char *pop, const char *tr
     ESP_LOGI(TAG, "If QR code is not visible, copy paste the below URL in a browser.\n%s?data=%s", QRCODE_BASE_URL, payload);
 }
 
-void startProvisioning(void)
+static void provision(bool force)
 {
-    /* Initialize NVS partition */
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-        /* NVS partition was truncated
-         * and needs to be erased */
-        ESP_ERROR_CHECK(nvs_flash_erase());
-
-        /* Retry nvs_flash_init */
-        ESP_ERROR_CHECK(nvs_flash_init());
-    }
-
-    /* Initialize TCP/IP */
-    ESP_ERROR_CHECK(esp_netif_init());
-
-    /* Initialize the event loop */
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-    wifi_event_group = xEventGroupCreate();
-
-    /* Register our event handler for Wi-Fi, IP and Provisioning related events */
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
-
-    /* Initialize Wi-Fi including netif with default config */
-    esp_netif_create_default_wifi_sta();
-#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP
-    esp_netif_create_default_wifi_ap();
-#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP */
-    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
-
-    /* Configuration for the provisioning manager */
-    wifi_prov_mgr_config_t config = {
-        /* What is the Provisioning Scheme that we want ?
-         * wifi_prov_scheme_softap or wifi_prov_scheme_ble */
-#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_BLE
-        .scheme = wifi_prov_scheme_ble,
-#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_BLE */
-#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP
-        .scheme = wifi_prov_scheme_softap,
-#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP */
-
-        /* Any default scheme specific event handler that you would
-         * like to choose. Since our example application requires
-         * neither BT nor BLE, we can choose to release the associated
-         * memory once provisioning is complete, or not needed
-         * (in case when device is already provisioned). Choosing
-         * appropriate scheme specific event handler allows the manager
-         * to take care of this automatically. This can be set to
-         * WIFI_PROV_EVENT_HANDLER_NONE when using wifi_prov_scheme_softap*/
-#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_BLE
-        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM
-#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_BLE */
-#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP
-        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
-#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP */
-    };
-
-    /* Initialize provisioning manager with the
-     * configuration parameters set above */
-    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
-
     bool provisioned = false;
     /* Let's find out if the device is provisioned */
     ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
 
     /* If device is not yet provisioned start provisioning service */
-    if (!provisioned) {
+    if (!provisioned or force) {
         ESP_LOGI(TAG, "Starting provisioning");
 
         /* What is the Device Service Name that we want
@@ -307,14 +254,90 @@ void startProvisioning(void)
     } else {
         ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
 
-        /* We don't need the manager as device is already provisioned,
-         * so let's release it's resources */
-        wifi_prov_mgr_deinit();
-
         /* Start Wi-Fi station */
         wifi_init_sta();
     }
+}
 
-    /* Wait for Wi-Fi connection */
-    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, false, true, portMAX_DELAY);
+void startProvisioning(void)
+{
+    /* Initialize NVS partition */
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        /* NVS partition was truncated
+         * and needs to be erased */
+        ESP_ERROR_CHECK(nvs_flash_erase());
+
+        /* Retry nvs_flash_init */
+        ESP_ERROR_CHECK(nvs_flash_init());
+    }
+
+    /* Initialize TCP/IP */
+    ESP_ERROR_CHECK(esp_netif_init());
+
+    /* Initialize the event loop */
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+    wifi_event_group = xEventGroupCreate();
+
+    /* Register our event handler for Wi-Fi, IP and Provisioning related events */
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
+
+    /* Initialize Wi-Fi including netif with default config */
+    esp_netif_create_default_wifi_sta();
+#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP
+    esp_netif_create_default_wifi_ap();
+#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP */
+    wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
+    ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+
+    /* Configuration for the provisioning manager */
+    wifi_prov_mgr_config_t config = {
+        /* What is the Provisioning Scheme that we want ?
+         * wifi_prov_scheme_softap or wifi_prov_scheme_ble */
+#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_BLE
+        .scheme = wifi_prov_scheme_ble,
+#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_BLE */
+#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP
+        .scheme = wifi_prov_scheme_softap,
+#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP */
+
+        /* Any default scheme specific event handler that you would
+         * like to choose. Since our example application requires
+         * neither BT nor BLE, we can choose to release the associated
+         * memory once provisioning is complete, or not needed
+         * (in case when device is already provisioned). Choosing
+         * appropriate scheme specific event handler allows the manager
+         * to take care of this automatically. This can be set to
+         * WIFI_PROV_EVENT_HANDLER_NONE when using wifi_prov_scheme_softap*/
+#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_BLE
+        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM
+#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_BLE */
+#ifdef CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP
+        .scheme_event_handler = WIFI_PROV_EVENT_HANDLER_NONE
+#endif /* CONFIG_EXAMPLE_PROV_TRANSPORT_SOFTAP */
+    };
+
+    /* Initialize provisioning manager with the
+     * configuration parameters set above */
+    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
+
+    bool force = false;
+    while(true)
+    {
+        provision(force);
+
+        /* Wait for Wi-Fi connection */
+        EventBits_t evt = xEventGroupWaitBits(wifi_event_group, WIFI_DISCONNECTED_EVENT | WIFI_CONNECTED_EVENT, true, false, portMAX_DELAY);
+        ESP_LOGI(TAG, "evt %X", evt);
+        if(evt & WIFI_CONNECTED_EVENT)
+        {
+            break;
+        }
+        force = true;
+    }
+    /* We don't need the manager as device is already provisioned,
+        * so let's release it's resources */
+    wifi_prov_mgr_deinit();
 }
