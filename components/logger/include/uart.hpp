@@ -5,25 +5,10 @@
 #include <thread>
 #include <atomic>
 #include "blocking_queue.hpp"
+#include "debug_msg_handler.hpp"
+#include "task.hpp"
 
-class UartThread
-{
-public:
-    void start(BlockingQueue<std::vector<uint8_t>>&);
-    void stop();
-    bool isRun() const;
-    
-protected:
-    const char* cName;
-    std::atomic<bool> run;
-    std::thread threadHandle;
-    
-    UartThread(const char* cName);
-    virtual ~UartThread();
-    virtual void thread(BlockingQueue<std::vector<uint8_t>>& queue) = 0;
-};
-
-class UartTx : public UartThread
+class UartTx : public Client
 {
 public:
     UartTx(int uartPortNum);
@@ -31,10 +16,10 @@ public:
     
 protected:
     const int cUartNum;
-    void thread(BlockingQueue<std::vector<uint8_t>>& queue);
+    bool write(const std::vector<uint8_t>& msg);
 };
 
-class UartRx : public UartThread
+class UartRx : public Task
 {
 public:
     UartRx(int uartPortNum);
@@ -42,28 +27,28 @@ public:
     
 protected:
     const int cUartNum;
-    void thread(BlockingQueue<std::vector<uint8_t>>& queue);
+    void task() override;
 };
 
 class UartService
 {
 public:
-    UartService(int uartPortNum);
-    ~UartService();
+    struct Config
+    {
+        int baudRate;
+        int uartNum;
+    };
 
-    bool isRun() const;
-    
-    void start(int baudRate, BlockingQueue<std::vector<uint8_t>>& _txQ, BlockingQueue<std::vector<uint8_t>>& _rxQ);
-    void stop();
-
-    int getPort() const {return cUartNum;};
-    int getBaudRate() const {return mBaudRate;};
+    static UartService& get();
+    void init(const Config& cfg);
+    const Config& getCfg() const { return mConfig; };
 
 protected:
-    int mBaudRate;
-    const int cUartNum;
-    UartTx txTask;
-    UartRx rxTask;
+    Config mConfig;
+    std::unique_ptr<UartRx> pUartRx;
+    std::unique_ptr<UartTx> pUartTx;
+
+    UartService();
 };
 
 #endif //UASRT_HPP
