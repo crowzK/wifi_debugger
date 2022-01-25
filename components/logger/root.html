@@ -50,7 +50,14 @@
       switch(cmd[1])
       {
         case String.fromCharCode(1):
-          stat.innerText = " Baudrate: " + evt.data.split(String.fromCharCode(1))[1].split(' ')[0] + " Port: UART" + evt.data.split(' ')[1];
+          stat.innerText = " Baudrate: " 
+            + evt.data.split(String.fromCharCode(1))[1].split(' ')[0] 
+            + " Port: UART" + evt.data.split(' ')[1];
+          var strs = evt.data.split(' ');
+          for(let i = 2; i < strs.length; i ++)
+          {
+            stat.innerText += (" " + strs[i]);
+          }
           return;
         default:
           break;
@@ -142,6 +149,10 @@
         break;
       case 'v':
         ctrlKey = String.fromCharCode(22);
+      case 's':
+        ctrlKey = String.fromCharCode(19);
+      case 't':
+        ctrlKey = String.fromCharCode(20);
         break;
       default:
         break;
@@ -190,8 +201,13 @@
     margin: 0px;
   }
 </style>
-<h2 style="height: 22px">Debug Console</h2>
+<h2 style="height: 22px">WIFI Debugger Console</h2>
 <body style="overflow-y:auto; margin: 5px">
+    <div style="width:44px; float: left; margin: 6px">
+      <form action="log?">
+        <input type="submit" value="Logs" />
+      </form>
+    </div>
     <div style="width:100px; float: left; margin: 5px">
       <button type="button" onclick="saveLogFile()" class="button">Save Log</button>
     </div>
