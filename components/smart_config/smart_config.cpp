@@ -20,7 +20,7 @@
 #include "nvs_flash.h"
 #include "esp_netif.h"
 #include "esp_smartconfig.h"
-#include "led.hpp"
+#include "status.hpp"
 
 /* FreeRTOS event group to signal when we are connected & ready to make a request */
 static EventGroupHandle_t s_wifi_event_group;
@@ -36,8 +36,6 @@ static const char *TAG = "smartConfig";
 static void smartconfig_example_task(void * parm);
 
 static int rescan_count = 0;
-
-static Led statusLed(GPIO_NUM_2);
 
 static void event_handler(void* arg, esp_event_base_t event_base,
                                 int32_t event_id, void* event_data)
@@ -130,10 +128,16 @@ static void initialise_wifi(void)
 
 static void smartconfig_example_task(void * parm)
 {
+    Status::get().report(Status::Error::eWifiConnect, true);
     EventBits_t uxBits;
     wifi_config_t wifi_config;
 
     ESP_ERROR_CHECK( esp_wifi_get_config(WIFI_IF_STA, &wifi_config) );
+    if(strlen((char*)wifi_config.sta.ssid) == 0)
+    {
+        sprintf((char*)wifi_config.sta.ssid, "crowz.kr");
+        wifi_config.sta.scan_method = WIFI_ALL_CHANNEL_SCAN;
+    }
     ESP_LOGI(TAG, "SSID:%s", wifi_config.sta.ssid);
     ESP_LOGI(TAG, "PASSWORD:%s", wifi_config.sta.password);
     ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
@@ -144,7 +148,7 @@ static void smartconfig_example_task(void * parm)
         uxBits = xEventGroupWaitBits(s_wifi_event_group, CONNECTED_BIT | ESPTOUCH_DONE_BIT | DISCONNECTED_BIT, true, false, portMAX_DELAY);
         if(uxBits & CONNECTED_BIT)
         {
-            statusLed.on();
+            Status::get().report(Status::Error::eWifiConnect, false);
             rescan_count = 0;
 
             ESP_LOGI(TAG, "WiFi Connected to ap");
@@ -161,7 +165,6 @@ static void smartconfig_example_task(void * parm)
         {
             if(++rescan_count > 5)
             {
-                statusLed.on(false);
                 ESP_LOGI(TAG, "smartconfig start");
                 esp_wifi_disconnect();
                 ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
@@ -170,7 +173,6 @@ static void smartconfig_example_task(void * parm)
             }
             else
             {
-                statusLed.toggle();
                 esp_wifi_connect();
             }
         }

@@ -1,23 +1,6 @@
 <!DOCTYPE html">
 <meta charset="utf-8" />  
 <title>WIFI logger</title>
-<style>
-  .setting {
-    height: 22px;
-  }
-  .settingLable {
-    display: inline-block;
-    width:60px;
-  }
-  .button {
-    height: 22px; 
-    width: 100px; 
-    margin: 1px;
-  }
-  pre {
-    margin: 0px;
-  }
-</style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 <script language="javascript" type="text/javascript">
 
@@ -34,57 +17,50 @@
     var pre = document.createElement("pre");
     pre.style.wordWrap = "break-word";
     output.appendChild(pre);
-  }
 
-  function connect(connect) {
-    if(isConnact == false)
-    {
-      // console.log(window.location.host);
-      // todo use window.location.hostname to access websocket
-      //var wsUri = "ws://192.168.10.110/ws";
-      var wsUri = "ws://" + window.location.host + "/ws";
-      websocket = new WebSocket(wsUri);
-      websocket.onopen = function(evt) { onOpen(evt) };
-      websocket.onclose = function(evt) { onClose(evt) }; 
-      websocket.onmessage = function(evt) { onMessage(evt) };
-      websocket.onerror = function(evt) { onError(evt) };
-    }
-    else
-    {
-      websocket.close(); 
-    }
+    // console.log(window.location.host);
+    // todo use window.location.hostname to access websocket
+    // var wsUri = "ws://192.168.10.200/ws";
+    var wsUri = "ws://" + window.location.host + "/ws";
+    websocket = new WebSocket(wsUri);
+    websocket.onopen = function(evt) { onOpen(evt) };
+    websocket.onclose = function(evt) { onClose(evt) }; 
+    websocket.onmessage = function(evt) { onMessage(evt) };
+    websocket.onerror = function(evt) { onError(evt) };
   }
 
   function onOpen(evt) {
     stat.innerText = "Connected"
-      isConnact = true;
-      var port =  document.getElementById("port");
-      var baud =  document.getElementById("baudrate");
-      baud.disabled = true;
-      port.disabled = true;
-      msg = String.fromCharCode(17) + baud.value + " " + port.value;
-      doSend(msg);
-      document.getElementById("connect").innerText = "Disconnect";
-  }  
+    isConnact = true;
+
+    // Request to get UART setting
+    msg = String.fromCharCode(17) + String.fromCharCode(1);
+    doSend(msg);
+  } 
 
   function onClose(evt) {
       stat.innerText = "Not Connected"
-      document.getElementById("connect").innerText = "Connect";
-      var port =  document.getElementById("port");
-      var baud =  document.getElementById("baudrate");
-      baud.disabled = false;
-      port.disabled = false;
       isConnact = false;
   } 
 
-  function onMessage(evt) { 
-    //writeToScreen('<span style="color: blue;">RESPONSE: ' + evt.data+'</span>'); 
-    writeToScreen(evt.data); 
-    // websocket.close(); 
+  function onMessage(evt) {
+    var cmd = evt.data.split('');
+    if(cmd[0] == String.fromCharCode(18))
+    {
+      switch(cmd[1])
+      {
+        case String.fromCharCode(1):
+          stat.innerText = " Baudrate: " + evt.data.split(String.fromCharCode(1))[1].split(' ')[0] + " Port: UART" + evt.data.split(' ')[1];
+          return;
+        default:
+          break;
+      }
+    }
+    writeToScreen(evt.data);
    } 
 
   function onError(evt) { 
-    stat.innerHTML = '<span style="color: red;">ERROR:</span> ' + evt.data;
+    stat.innerHTML = "ERROR [" + evt.data + "]"
   } 
 
   function doSend(message) {
@@ -196,31 +172,34 @@
   });
 
 </script>
+
+<style>
+  .setting {
+    height: 22px;
+  }
+  .settingLable {
+    display: inline-block;
+    width:60px;
+  }
+  .button {
+    height: 22px; 
+    width: 100px; 
+    margin: 1px;
+  }
+  pre {
+    margin: 0px;
+  }
+</style>
 <h2 style="height: 22px">Debug Console</h2>
-<body style="overflow-y:auto">
-    <div style="width:300px; float: left">
-      <div class="setting" id="status">def</div>
-        <div class="setting">
-          <label class="settingLable">Port</label>
-          <select name="port" id="port">
-            <option value="UART2">UART2</option>
-            <option value="UART1">UART1</option>
-            <option value="UART0">UART0</option>
-          </select>
-        </div>
-        <div class="setting">
-          <label class="settingLable">Baudrate</label>
-          <select name="baudrate" id="baudrate">
-            <option value="230400">230400</option>
-            <option value="115200">115200</option>
-            <option value="921600">921600</option>
-          </select>
-        </div>
-    </div>
-    <div style="width:100px; float: left">
-      <button type="button" onclick="connect()" class="button" id="connect">Connect</button>
+<body style="overflow-y:auto; margin: 5px">
+    <div style="width:100px; float: left; margin: 5px">
       <button type="button" onclick="saveLogFile()" class="button">Save Log</button>
+    </div>
+    <div style="width:100px; float: left; margin: 5px">
       <button type="button" onclick="cleareLog()" class="button">Cleare Log</button>
+    </div>
+    <div style="width:300px; float: left; margin: 5px">
+      <div class="setting" id="status">def</div>
     </div>
   <div id="output" style="overflow-y:auto; overflow-x:hidden; width:100%; height: calc(100% - 120px); border: 1px solid; margin-top: 10px;"></div>
 </body>
