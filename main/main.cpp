@@ -1,17 +1,15 @@
 #include "logger_web.hpp"
 #include "uart.hpp"
 #include "blocking_queue.hpp"
-#include "smart_config.hpp"
+#include "provisioning_manager.hpp"
 #include "sntp.h"
 #include "sdkconfig.h"
 #include "sdcard.hpp"
 #include "file_server.hpp"
 
-esp_err_t start_file_server(const char *base_path);
-
 extern "C" void app_main(void)
 {
-    startSmartConfig();
+    startProvisioning();
 
     // time zone setting
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
