@@ -1,58 +1,17 @@
-#include "esp_http_server.h"
-#include <esp_wifi.h>
-#include <esp_event.h>
 #include <esp_log.h>
-#include <esp_system.h>
-#include <nvs_flash.h>
-#include <sys/param.h>
-#include "nvs_flash.h"
-#include "esp_err.h"
-#include "esp_netif.h"
-#include "logger_web.hpp"
-#include <memory>
-#include <algorithm>
-#include <string>
-#include <ctime>
 #include "cmd.hpp"
+#include "logger_web.hpp"
+#include "uart.hpp"
 
 /* A simple example that demonstrates using websocket echo server
  */
 static const char *TAG = "logger";
 
 //*******************************************************************
-// UriHandler
-//*******************************************************************
-UriHandler::UriHandler(httpd_handle_t server, const char* uri, httpd_method_t method) :
-    serverHandle(server),
-    uri{.uri        = uri,
-        .method     = method,
-        .handler    = handler,
-        .user_ctx   = this
-    }
-{
-    httpd_register_uri_handler(serverHandle, &this->uri);
-}
-
-UriHandler::~UriHandler()
-{
-    httpd_unregister_uri_handler(serverHandle, uri.uri, uri.method);
-}
-
-esp_err_t UriHandler::handler(httpd_req_t *req)
-{
-    UriHandler* pHandle = reinterpret_cast<UriHandler*>(req->user_ctx);
-    if(pHandle == nullptr)
-    {
-        return ESP_FAIL;
-    }
-    return pHandle->userHandler(req);
-}
-
-//*******************************************************************
 // IndexHandler
 //*******************************************************************
-IndexHandler::IndexHandler(httpd_handle_t server) :
-    UriHandler(server, "/", HTTP_GET)
+IndexHandler::IndexHandler() :
+    UriHandler("/", HTTP_GET)
 {
 }
 
@@ -105,24 +64,12 @@ bool WebLogSender::write(const std::vector<uint8_t>& msg)
 //*******************************************************************
 // WsHandler
 //*******************************************************************
-WsHandler::WsHandler(httpd_handle_t server) :
-    serverHandle(server),
-    uri{.uri        = "/ws",
-        .method     = HTTP_GET,
-        .handler    = handler,
-        .user_ctx   = this,
-        .is_websocket = true
-    }
+WsHandler::WsHandler() :
+    UriHandler("/ws", HTTP_GET, wshandler)
 {
-    httpd_register_uri_handler(serverHandle, &uri);
 }
 
-WsHandler::~WsHandler()
-{
-    httpd_unregister_uri_handler(serverHandle, uri.uri, uri.method);
-}
-
-esp_err_t WsHandler::handler(httpd_req *req)
+esp_err_t WsHandler::wshandler(httpd_req *req)
 {
     if(not DebugMsgRx::get().isAdded(httpd_req_to_sockfd(req)))
     {
@@ -177,58 +124,10 @@ esp_err_t WsHandler::handler(httpd_req *req)
 }
 
 //*******************************************************************
-// WebLogger
-//*******************************************************************
-WebLogger::WebLogger() :
-    serverHandle(nullptr)
-{
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, (esp_event_handler_t)&handler, this));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, (esp_event_handler_t)&handler, this));
-}
-
-WebLogger::~WebLogger()
-{
-
-}
-
-void WebLogger::handler(WebLogger* pLogger, esp_event_base_t event_base, int32_t event_id, void* event_data)
-{
-    if(event_base == IP_EVENT)
-    {
-        if(pLogger->serverHandle == nullptr)
-        {
-            httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-
-            // Start the httpd server
-            ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
-            if (httpd_start(&pLogger->serverHandle, &config) != ESP_OK)
-            {
-                ESP_LOGI(TAG, "Error starting server!");
-                return;
-            }
-            
-            // Registering the ws handler
-            ESP_LOGI(TAG, "Registering URI handlers");
-            //httpd_register_uri_handler(pLogger->serverHandle, &ws);
-            pLogger->pLoggerHandler.reset();
-            pLogger->pLoggerHandler = std::make_unique<WsHandler>(pLogger->serverHandle);
-            pLogger->pIndexHandler.reset();
-            pLogger->pIndexHandler = std::make_unique<IndexHandler>(pLogger->serverHandle);
-        }
-    }
-    else if(event_base == WIFI_EVENT)
-    {
-        pLogger->pIndexHandler.reset();
-        pLogger->pLoggerHandler.reset();
-        httpd_stop(pLogger->serverHandle);
-        pLogger->serverHandle = nullptr;
-    }
-}
-
-//*******************************************************************
 
 void start_logger_web()
 {
-    static WebLogger logger;
+    static IndexHandler indexHandler;
+    static WsHandler wsHandler;
     UartService::get();
 }
