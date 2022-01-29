@@ -17,6 +17,6 @@
     1. Web-based console terminal
     1. Changeable baud rate
 
-1. CMSIS debug probe TODO
-1. GDB remote debugging TODO
+1. pyCOD remote probe
+    1. TODO
 
