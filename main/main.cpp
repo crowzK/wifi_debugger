@@ -6,6 +6,7 @@
 #include "sdkconfig.h"
 #include "sdcard.hpp"
 #include "file_server.hpp"
+#include "pyocd_server.hpp"
 
 extern "C" void app_main(void)
 {
@@ -18,7 +19,8 @@ extern "C" void app_main(void)
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
     start_logger_web();
-
+    static PyOcdServer pyocd;
+    
     static SdCard sdcard;
     start_file_server();
     while(sntp_getreachability(0) == 0)

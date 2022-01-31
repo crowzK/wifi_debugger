@@ -1,17 +1,11 @@
 #include <stdint.h>
 #include <vector>
 
-
-class PyOcdServer
+class PyOcdProbe
 {
-public:
-    PyOcdServer();
-    ~PyOcdServer() = default;
+    PyOcdProbe();
+    ~PyOcdProbe();
 
-    //! \brief start/stop the server
-    void start(bool start = true);
-
-protected:
     void hello();
     void readprop();
 
