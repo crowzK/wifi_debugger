@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 #include "socket.hpp"
+#include "ArduinoJson.h"
 
 class Request
 {
@@ -58,6 +59,8 @@ public:
     ~PyOcdServer() = default;
 
 protected:
+    StaticJsonDocument<1024> mDoc;
 
     bool serverMain(int acceptSocekt) override;
+    void sendResult(int socket, int id);
 };

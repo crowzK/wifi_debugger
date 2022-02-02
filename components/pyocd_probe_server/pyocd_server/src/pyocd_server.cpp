@@ -3,7 +3,6 @@
 #include "gpio_swd.hpp"
 #include <esp_log.h>
 #include "lwip/sockets.h"
-#include "ArduinoJson.h"
 
 
 //-------------------------------------------------------------------
@@ -73,6 +72,17 @@ PyOcdServer::PyOcdServer() :
 
 }
 
+void PyOcdServer::sendResult(int socket, int id)
+{
+    mDoc.clear();
+    mDoc["id"] = id;
+    mDoc["status"] = 0;
+    std::string ret;
+    serializeJson(mDoc,ret);
+    ret += '\n';
+    send(socket, ret.c_str(), ret.size(), 0); 
+}
+
 bool PyOcdServer::serverMain(int acceptSocekt)
 {
     char rx_buffer[512];
@@ -92,30 +102,34 @@ bool PyOcdServer::serverMain(int acceptSocekt)
         {
             rx_buffer[len] = 0; // Null-terminate whatever is received and treat it like a string
             ESP_LOGI(TAG, "MSG %s", rx_buffer);
-            DynamicJsonDocument doc(1024);
-            deserializeJson(doc, rx_buffer);
-            const int id = (int)doc["id"];
-            if(doc["request"])
+            mDoc.clear();
+            deserializeJson(mDoc, rx_buffer);
+            const int id = (int)mDoc["id"];
+            if(mDoc["request"])
             {
-                Request::Cmd cmd = Request::fromString(std::string(static_cast<const char*>(doc["request"])));
-                ESP_LOGI(TAG, "Cmd %s Id %d", Request::toString(cmd).c_str(), id);
-                
+                Request::Cmd cmd = Request::fromString(std::string(static_cast<const char*>(mDoc["request"])));
                 switch(cmd)
                 {
                 case Request::hello:
-                    ESP_LOGI(TAG, "version %d", (int)doc["arguments"][0]);
+                    ESP_LOGI(TAG, "version %d", (int)mDoc["arguments"][0]);
+                    sendResult(acceptSocekt, id);                   
                     break;
-                case Request::readprop:
+                case Request::set_clock:
+                    ESP_LOGI(TAG, "clock %d", (int)mDoc["arguments"][0]);
+                    sendResult(acceptSocekt, id);                                      
+                    break;
+                case Request::lock:
                 case Request::open:
                 case Request::close:
-                case Request::lock:
+                    sendResult(acceptSocekt, id);                                      
+                    break;
+                case Request::readprop:
                 case Request::unlock:
                 case Request::connect:
                 case Request::disconnect:
                 case Request::swj_sequence:
                 case Request::swd_sequence:
                 case Request::jtag_sequence:
-                case Request::set_clock:
                 case Request::reset:
                 case Request::assert_reset:
                 case Request::is_reset_asserted:
@@ -137,7 +151,8 @@ bool PyOcdServer::serverMain(int acceptSocekt)
                 case Request::read_block8:
                 case Request::write_block8:
                 default:
-                break;
+                    ESP_LOGW(TAG, "Cmd %s Id %d", Request::toString(cmd).c_str(), id);
+                    break;
                 }
             }
         }
