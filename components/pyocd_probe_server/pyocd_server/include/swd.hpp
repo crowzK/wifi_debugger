@@ -17,7 +17,7 @@ public:
 
     virtual ~Swd() = default;
 
-    virtual uint32_t sequence(uint32_t data, uint8_t bitLength) const = 0;
-    virtual Response write(Cmd cmd, uint32_t data) const = 0;
-    virtual Response read(Cmd cmd, uint32_t& data) const = 0;
+    virtual uint32_t sequence(uint32_t data, uint8_t bitLength) = 0;
+    virtual Response write(Cmd cmd, uint32_t data) = 0;
+    virtual Response read(Cmd cmd, uint32_t& data) = 0;
 };
