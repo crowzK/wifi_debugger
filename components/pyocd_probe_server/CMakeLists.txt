@@ -2,6 +2,7 @@ set(src_dirs
     . 
     pyocd_server/src
     pyocd_server/libs/socket
+    pyocd_server/libs/JSON_Decoder
 )
 
 set(exclude_srcs 
@@ -12,8 +13,8 @@ set(include_dirs
     .
     pyocd_server/src 
     pyocd_server/include
-    pyocd_server/libs/ArduinoJson/src
     pyocd_server/libs/socket
+    pyocd_server/libs/JSON_Decoder
 )
 
 idf_component_register(

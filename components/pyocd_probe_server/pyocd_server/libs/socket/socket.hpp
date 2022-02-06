@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <thread>
 
 class ServerSocket
 {
@@ -10,9 +9,10 @@ public:
 protected:
     const int cServerSocket;
     const int cPort;
-    std::thread mServerThread;
 
     void acceptThread();
 
     virtual bool serverMain(int acceptSocekt) = 0;
+
+    static void task(ServerSocket* pSock);
 };

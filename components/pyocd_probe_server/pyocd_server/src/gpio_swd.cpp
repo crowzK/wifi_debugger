@@ -1,8 +1,12 @@
 #include "gpio_swd.hpp"
+#include <esp_log.h>
 
 inline void GpioSwd::delay()
 {
-
+    for(int i = 0; i < 5; i ++)
+    {
+        ;
+    }
 }
 
 inline void GpioSwd::clkCycle()
@@ -38,19 +42,19 @@ inline void GpioSwd::sendRequest(uint32_t request)
 {
     uint32_t parity = 0U;
     writeBit(true);         /* Start Bit */
-    bool bit = request >> 0;
-    writeBit(bit);          /* APnDP Bit */
+    uint32_t bit = request >> 0;
+    writeBit(bit & 1);          /* APnDP Bit */
     parity += bit;
     bit = request >> 1;
-    writeBit(bit);          /* RnW Bit */
+    writeBit(bit & 1);          /* RnW Bit */
     parity += bit;
     bit = request >> 2;
-    writeBit(bit);          /* A2 Bit */
+    writeBit(bit & 1);          /* A2 Bit */
     parity += bit;
     bit = request >> 3;
-    writeBit(bit);          /* A3 Bit */
+    writeBit(bit & 1);          /* A3 Bit */
     parity += bit;
-    writeBit(parity);       /* Parity Bit */
+    writeBit(parity & 1);       /* Parity Bit */
     writeBit(false);        /* Stop Bit */
     writeBit(true);         /* Park Bit */
 }
@@ -68,10 +72,15 @@ inline uint32_t GpioSwd::readAck()
 
 GpioSwd::GpioSwd()
 {
-    
+    gpio_reset_pin(cPinSwDio);
+    gpio_reset_pin(cPinSwClk);
+    gpio_set_direction(cPinSwDio, GPIO_MODE_OUTPUT);
+    gpio_set_direction(cPinSwClk, GPIO_MODE_OUTPUT);
+    gpio_set_level(cPinSwDio, false);
+    gpio_set_level(cPinSwClk, false);
 }
 
-uint32_t GpioSwd::sequence(uint32_t data, uint8_t bitLength)
+uint32_t GpioSwd::sequence(uint64_t data, uint8_t bitLength)
 {
     for (int i = 0; i < bitLength; ++i)
     {
@@ -100,7 +109,10 @@ GpioSwd::Response GpioSwd::write(Cmd cmd, uint32_t data)
         val >>= 1;
     }
     writeBit((parity & 1) > 0);
-    writeBit(true);
+    gpio_set_level(cPinSwDio, false);
+    clkCycle();
+    clkCycle();
+    gpio_set_level(cPinSwDio, true);
     return ack;
 }
 
@@ -121,14 +133,17 @@ GpioSwd::Response GpioSwd::read(Cmd cmd, uint32_t& data)
         val |= bit << 31;
     }
     bool bit = readBit();
-    if((parity & bit) & 1)
+    if((parity ^ bit) & 1)
     {
         ack = Response::ParityError;
     }
     data = val;
     clkCycle();
     gpio_set_direction(cPinSwDio, GPIO_MODE_OUTPUT);
-    writeBit(true);
+    gpio_set_level(cPinSwDio, false);
+    clkCycle();
+    clkCycle();
+    gpio_set_level(cPinSwDio, true);
     return ack;
 }
 

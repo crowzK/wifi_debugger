@@ -7,6 +7,7 @@
 #include "sdcard.hpp"
 #include "file_server.hpp"
 #include "pyocd_server.hpp"
+#include <esp_log.h>
 
 extern "C" void app_main(void)
 {

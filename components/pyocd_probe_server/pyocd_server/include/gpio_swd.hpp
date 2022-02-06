@@ -1,3 +1,5 @@
+#pragma once
+
 #include "swd.hpp"
 #include "driver/gpio.h"
 
@@ -7,7 +9,7 @@ public:
     GpioSwd();
     ~GpioSwd() = default;
 
-    uint32_t sequence(uint32_t data, uint8_t bitLength) override;
+    uint32_t sequence(uint64_t data, uint8_t bitLength) override;
     Response write(Cmd cmd, uint32_t data) override;
     Response read(Cmd cmd, uint32_t& data) override;
 

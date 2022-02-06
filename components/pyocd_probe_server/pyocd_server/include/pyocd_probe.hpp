@@ -12,8 +12,6 @@ class PyOcdProbe
 // -------------------------------------------
 //          Target control functions
 // -------------------------------------------
-    void connect();
-    void disconnect();
     void setClock(uint32_t frequency);
     void reset();
     void assert_reset(bool asserted);

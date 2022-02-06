@@ -1,15 +1,5 @@
 #include "pyocd_probe.hpp"
 
-void PyOcdProbe::connect()
-{
-
-}
-
-void PyOcdProbe::disconnect()
-{
-
-}
-
 void PyOcdProbe::setClock(uint32_t frequency)
 {
 
