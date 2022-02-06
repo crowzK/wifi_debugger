@@ -161,7 +161,7 @@ void PyOcdParser::sendArray(const std::vector<uint32_t>& vector)
 void PyOcdParser::sendError(const char * str)
 {
     char buffer[128] = {};
-    const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 0, \"error\": %s}\n", mId, str);
+    const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 1, \"error\": \"%s\"}\n", mId, str);
     send(mSocket, buffer, len, 0);
 }
 

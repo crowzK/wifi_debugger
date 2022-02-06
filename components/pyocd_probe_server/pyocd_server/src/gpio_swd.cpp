@@ -3,7 +3,7 @@
 
 inline void GpioSwd::delay()
 {
-    for(int i = 0; i < 5; i ++)
+    for(int i = 0; i < 0; i ++)
     {
         ;
     }
@@ -28,7 +28,7 @@ inline void GpioSwd::writeBit(bool bit)
 
 inline bool GpioSwd::readBit()
 {
-    bool in;
+    int in;
     gpio_set_level(cPinSwClk, false);
     delay();
     in = gpio_get_level(cPinSwDio);
@@ -61,12 +61,12 @@ inline void GpioSwd::sendRequest(uint32_t request)
 
 inline uint32_t GpioSwd::readAck()
 {
-    bool bit = readBit();
-    uint32_t ack = bit << 0;
+    uint32_t bit = readBit();
+    uint32_t ack = (bit << 0);
     bit = readBit();
-    ack |= bit << 1;
+    ack |= (bit << 1);
     bit = readBit();
-    ack |= bit << 2;
+    ack |= (bit << 2);
     return ack;
 }
 

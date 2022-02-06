@@ -1,4 +1,5 @@
 #include "swd.hpp"
+#include <esp_log.h>
 
 // Debug Port Register Addresses
 #define DP_IDCODE                       0x00U   // IDCODE Register (SW Read only)
@@ -33,66 +34,113 @@
 #define SWD_REG_W         (0<<1)
 #define SWD_REG_ADR(a)    (a & 0x0c)
 
+static const char* TAG = "Swd";
+
 bool Swd::cleareErrors()
 {
-    return writeDp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR);
+    auto res = writeDp(DP_ABORT, STKCMPCLR | STKERRCLR | WDERRCLR | ORUNERRCLR);
+    if(res != Response::Ok)
+    {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+    }
+    return res == Response::Ok;
 }
 
 bool Swd::readDp(uint8_t addr, uint32_t& dp)
 {
     uint8_t req = SWD_REG_DP | SWD_REG_R | SWD_REG_ADR(addr);
-    return read(req, dp) == Response::Ok;
+    auto res =  read(req, dp) == Response::Ok;
+    if(res != Response::Ok)
+    {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+    }
+    return res == Response::Ok;
 }
 
 bool Swd::writeDp(uint8_t addr, uint32_t dp)
 {
     uint8_t req = SWD_REG_DP | SWD_REG_W | SWD_REG_ADR(addr);
-    return write(req, dp) == Response::Ok;
+    auto res =  write(req, dp) == Response::Ok;
+    if(res != Response::Ok)
+    {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+    }
+    return res == Response::Ok;
 }
 
 bool Swd::readAp(uint8_t addr, uint32_t& ap)
 {
     uint8_t req = SWD_REG_AP | SWD_REG_R | SWD_REG_ADR(addr);
     read(req, ap);
-    return read(req, ap) == Response::Ok;
+    auto res =  read(req, ap) == Response::Ok;
+    if(res != Response::Ok)
+    {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+    }
+    return res == Response::Ok;
 }
 
 bool Swd::readApMultiple(uint8_t addr, std::vector<uint32_t>&out)
 {
     uint8_t req = SWD_REG_AP | SWD_REG_R | AP_DRW;
     uint32_t ap;
-    if(not read(req, ap))
+    Response res;
+    res = read(req, ap);
+    if(res != Response::Ok)
     {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
         return false;
     }
     for(int i = 0; i < out.size() - 1; i++)
     {
-        if(not read(req, ap))
+        res = read(req, ap);
+        if(res != Response::Ok)
         {
+            ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
             return false;
         }
         out[i] = ap;
     }
     req = SWD_REG_DP | SWD_REG_R | SWD_REG_ADR(DP_RDBUFF);
-    Response resp = read(req, ap);
+    res = read(req, ap);
     out[out.size() - 1] = ap;
-    return resp == Response::Ok;
+    if(res != Response::Ok)
+    {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+    }
+    return res == Response::Ok;
 }
 
 bool Swd::writeAp(uint8_t addr, uint32_t ap)
 {
     uint8_t req = SWD_REG_AP | SWD_REG_W | SWD_REG_ADR(addr);
-    return write(req, ap) == Response::Ok;
+    auto res =  write(req, ap) == Response::Ok;
+    if(res != Response::Ok)
+    {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+    }
+    return res == Response::Ok;
 }
 
 bool Swd::writeApMultiple(uint8_t addr, std::vector<uint32_t>&in)
 {
     uint8_t req = SWD_REG_AP | SWD_REG_W | (3 << 2);
+    Response res;
     for(int i = 1; i < in.size() - 1; i++)
     {
-        write(req, in[i]);
+        res = write(req, in[i]);
+        if(res != Response::Ok)
+        {
+            ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+            return false;
+        }
     }
     uint32_t dummy;
     req =  SWD_REG_DP | SWD_REG_R | SWD_REG_ADR(DP_RDBUFF);
-    return read(req, dummy);
+    res = read(req, dummy);
+    if(res != Response::Ok)
+    {
+        ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
+    }
+    return res == Response::Ok;
 }
