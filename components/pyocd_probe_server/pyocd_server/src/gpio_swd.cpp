@@ -3,7 +3,7 @@
 
 inline void GpioSwd::delay()
 {
-    for(int i = 0; i < 0; i ++)
+    for(int i = 0; i < 50; i ++)
     {
         ;
     }
@@ -96,7 +96,7 @@ GpioSwd::Response GpioSwd::write(Cmd cmd, uint32_t data)
     gpio_set_direction(cPinSwDio, GPIO_MODE_INPUT);
     clkCycle();
 
-    Response ack = (Response)readAck();
+    Response ack = static_cast<Response>(readAck());
     clkCycle();
     gpio_set_direction(cPinSwDio, GPIO_MODE_OUTPUT);
 
@@ -122,7 +122,7 @@ GpioSwd::Response GpioSwd::read(Cmd cmd, uint32_t& data)
     gpio_set_direction(cPinSwDio, GPIO_MODE_INPUT);
     clkCycle();
 
-    Response ack = (Response)readAck();
+    Response ack = static_cast<Response>(readAck());
     uint32_t parity = 0;
     uint32_t val = 0;
     for(int i = 32; i; i--)
