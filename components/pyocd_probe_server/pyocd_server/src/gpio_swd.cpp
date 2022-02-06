@@ -92,58 +92,69 @@ uint32_t GpioSwd::sequence(uint64_t data, uint8_t bitLength)
 
 GpioSwd::Response GpioSwd::write(Cmd cmd, uint32_t data)
 {
-    sendRequest(cmd);
-    gpio_set_direction(cPinSwDio, GPIO_MODE_INPUT);
-    clkCycle();
-
-    Response ack = static_cast<Response>(readAck());
-    clkCycle();
-    gpio_set_direction(cPinSwDio, GPIO_MODE_OUTPUT);
-
-    uint32_t parity = 0;
-    uint32_t val = data;
-    for(int i = 32; i; i--)
+    Response ack;
+    do
     {
-        writeBit((val & 1) > 0);
-        parity += val;
-        val >>= 1;
-    }
-    writeBit((parity & 1) > 0);
-    gpio_set_level(cPinSwDio, false);
-    clkCycle();
-    clkCycle();
-    gpio_set_level(cPinSwDio, true);
+        sendRequest(cmd);
+        gpio_set_direction(cPinSwDio, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(cPinSwDio, GPIO_PULLUP_ONLY);
+        clkCycle();
+
+        ack = static_cast<Response>(readAck());
+        clkCycle();
+        gpio_set_direction(cPinSwDio, GPIO_MODE_OUTPUT);
+
+        uint32_t parity = 0;
+        uint32_t val = data;
+        for(int i = 32; i; i--)
+        {
+            writeBit((val & 1) > 0);
+            parity += val;
+            val >>= 1;
+        }
+        writeBit((parity & 1) > 0);
+        gpio_set_level(cPinSwDio, false);
+        clkCycle();
+        clkCycle();
+        gpio_set_level(cPinSwDio, true);
+    } while(ack == Response::Wait);
     return ack;
 }
 
 GpioSwd::Response GpioSwd::read(Cmd cmd, uint32_t& data)
 {
-    sendRequest(cmd);
-    gpio_set_direction(cPinSwDio, GPIO_MODE_INPUT);
-    clkCycle();
+    Response ack;
+    do
+    {
+        sendRequest(cmd);
+        gpio_set_direction(cPinSwDio, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(cPinSwDio, GPIO_PULLUP_ONLY);
+        clkCycle();
 
-    Response ack = static_cast<Response>(readAck());
-    uint32_t parity = 0;
-    uint32_t val = 0;
-    for(int i = 32; i; i--)
-    {
+        ack = static_cast<Response>(readAck());
+        uint32_t parity = 0;
+        uint32_t val = 0;
+        for(int i = 32; i; i--)
+        {
+            bool bit = readBit();
+            parity += bit;
+            val >>= 1;
+            val |= bit << 31;
+        }
         bool bit = readBit();
-        parity += bit;
-        val >>= 1;
-        val |= bit << 31;
-    }
-    bool bit = readBit();
-    if((parity ^ bit) & 1)
-    {
-        ack = Response::ParityError;
-    }
-    data = val;
-    clkCycle();
-    gpio_set_direction(cPinSwDio, GPIO_MODE_OUTPUT);
-    gpio_set_level(cPinSwDio, false);
-    clkCycle();
-    clkCycle();
-    gpio_set_level(cPinSwDio, true);
+        if((parity ^ bit) & 1)
+        {
+            ack = Response::ParityError;
+        }
+        data = val;
+        clkCycle();
+        gpio_set_direction(cPinSwDio, GPIO_MODE_OUTPUT);
+        gpio_set_level(cPinSwDio, false);
+        clkCycle();
+        clkCycle();
+        gpio_set_level(cPinSwDio, true);
+        /* code */
+    } while (ack == Response::Wait);
     return ack;
 }
 

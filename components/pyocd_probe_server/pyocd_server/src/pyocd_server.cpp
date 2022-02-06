@@ -184,8 +184,11 @@ void PyOcdParser::endDocument()
     case Request::lock:
     case Request::close:
     case Request::unlock:
-    case Request::connect:
     case Request::disconnect:
+        sendOkay();
+        break;
+    case Request::connect:
+        pSwd->cleareErrors();
         sendOkay();
         break;
     case Request::open:
