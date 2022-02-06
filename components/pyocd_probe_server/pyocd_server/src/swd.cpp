@@ -49,7 +49,7 @@ bool Swd::cleareErrors()
 bool Swd::readDp(uint8_t addr, uint32_t& dp)
 {
     uint8_t req = SWD_REG_DP | SWD_REG_R | SWD_REG_ADR(addr);
-    auto res =  read(req, dp) == Response::Ok;
+    auto res = read(req, dp);
     if(res != Response::Ok)
     {
         ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
@@ -60,7 +60,7 @@ bool Swd::readDp(uint8_t addr, uint32_t& dp)
 bool Swd::writeDp(uint8_t addr, uint32_t dp)
 {
     uint8_t req = SWD_REG_DP | SWD_REG_W | SWD_REG_ADR(addr);
-    auto res =  write(req, dp) == Response::Ok;
+    auto res = write(req, dp);
     if(res != Response::Ok)
     {
         ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
@@ -72,7 +72,7 @@ bool Swd::readAp(uint8_t addr, uint32_t& ap)
 {
     uint8_t req = SWD_REG_AP | SWD_REG_R | SWD_REG_ADR(addr);
     read(req, ap);
-    auto res =  read(req, ap) == Response::Ok;
+    auto res = read(req, ap);
     if(res != Response::Ok)
     {
         ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
@@ -114,7 +114,7 @@ bool Swd::readApMultiple(uint8_t addr, std::vector<uint32_t>&out)
 bool Swd::writeAp(uint8_t addr, uint32_t ap)
 {
     uint8_t req = SWD_REG_AP | SWD_REG_W | SWD_REG_ADR(addr);
-    auto res =  write(req, ap) == Response::Ok;
+    auto res = write(req, ap);
     if(res != Response::Ok)
     {
         ESP_LOGW(TAG, "%s Res %d", __func__, (int)res);
