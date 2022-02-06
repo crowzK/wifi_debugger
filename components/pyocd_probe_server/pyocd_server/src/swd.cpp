@@ -126,7 +126,7 @@ bool Swd::writeApMultiple(uint8_t addr, std::vector<uint32_t>&in)
 {
     uint8_t req = SWD_REG_AP | SWD_REG_W | (3 << 2);
     Response res;
-    for(int i = 1; i < in.size() - 1; i++)
+    for(int i = 1; i < in.size(); i++)
     {
         res = write(req, in[i]);
         if(res != Response::Ok)
