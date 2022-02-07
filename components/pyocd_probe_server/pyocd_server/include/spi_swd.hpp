@@ -15,6 +15,6 @@ public:
     Response read(Cmd cmd, uint32_t& data) override;
 
 protected:
-    static constexpr gpio_num_t cPinSwClk = (gpio_num_t)19;
-    static constexpr gpio_num_t cPinSwDio = (gpio_num_t)23;
+    static constexpr gpio_num_t cPinSwClk = (gpio_num_t)23;
+    static constexpr gpio_num_t cPinSwDio = (gpio_num_t)19;
 };

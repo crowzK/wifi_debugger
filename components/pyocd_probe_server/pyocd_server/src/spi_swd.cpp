@@ -22,7 +22,7 @@ spi_device_interface_config_t readCfg = {
 
 spi_device_interface_config_t writeCfg = {
 	.command_bits = 0,
-	.mode = 0,          //SPI mode 3
+	.mode = 0,          //SPI mode 3                                                                                                                                                                        
 	.clock_speed_hz = SPI_CLK,
 	.spics_io_num = -1,
 	.flags = SPI_DEVICE_3WIRE | SPI_DEVICE_POSITIVE_CS | SPI_DEVICE_HALFDUPLEX | SPI_DEVICE_BIT_LSBFIRST,
@@ -122,31 +122,42 @@ SpiSwd::SpiSwd()
     spi_bus_add_device(VSPI_HOST, &writeCfg, &txspi);
     spi_bus_add_device(VSPI_HOST, &readCfg, &rxspi);
     spi_bus_add_device(VSPI_HOST, &writeCfgParity, &txspi_parity);
+    gpio_set_pull_mode(cPinSwDio, GPIO_PULLUP_ONLY);
 }
 
 uint32_t SpiSwd::sequence(uint64_t data, uint8_t bitLength)
 {
-    spi_transaction_t t = {
-        .cmd = 0,
-        .length = bitLength,
-		.rx_buffer = &data,
-    };
-    spi_device_transmit(txspi, &t);
+    uint32_t d = data & 0xffffffff;
+    swdptap_seq_out(d, std::min(bitLength, (uint8_t)32));
+    if(bitLength > 32)
+    {
+        bitLength -= 32;
+        uint32_t d = (data >> 8) & 0xffffffff;
+        swdptap_seq_out(d, bitLength);
+    }
     return 0;
 }
 
 SpiSwd::Response SpiSwd::write(Cmd cmd, uint32_t data)
 {
-    swdptap_seq_out(getCmd(cmd), 8);
-    Response ack = static_cast<Response>(swdptap_seq_in(3));
-    swdptap_seq_out_parity(data, 32);
+    Response ack;
+    do
+    {
+        swdptap_seq_out(getCmd(cmd), 8);
+        ack = static_cast<Response>(swdptap_seq_in(3));
+        swdptap_seq_out_parity(data, 32);
+    } while(ack == Response::Wait);
     return ack;
 }
 
 SpiSwd::Response SpiSwd::read(Cmd cmd, uint32_t& data)
 {
-    swdptap_seq_out(getCmd(cmd), 8);
-    Response ack = static_cast<Response>(swdptap_seq_in(3));
-    swdptap_seq_in_parity(&data, 32);
+    Response ack;
+    do
+    {
+        swdptap_seq_out(getCmd(cmd), 8);
+        ack = static_cast<Response>(swdptap_seq_in(3));
+        swdptap_seq_in_parity(&data, 32);
+    } while(ack == Response::Wait);
     return ack;
 }
