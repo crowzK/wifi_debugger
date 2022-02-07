@@ -23,6 +23,12 @@ public:
     virtual Response write(Cmd cmd, uint32_t data) = 0;
     virtual Response read(Cmd cmd, uint32_t& data) = 0;
 
+    inline uint8_t getCmd(Cmd cmd)
+    {
+        uint32_t parity = __builtin_popcount(cmd);
+        return 0x81 | (cmd << 1) | ((parity & 1) << 5);
+    }
+
     bool cleareErrors();
     bool readDp(uint8_t addr, uint32_t& dp);
     bool writeDp(uint8_t addr, uint32_t dp);
