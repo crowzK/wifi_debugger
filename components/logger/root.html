@@ -20,7 +20,7 @@
 
     // console.log(window.location.host);
     // todo use window.location.hostname to access websocket
-    // var wsUri = "ws://192.168.10.200/ws";
+    // var wsUri = "ws://192.168.10.110/ws";
     var wsUri = "ws://" + window.location.host + "/ws";
     websocket = new WebSocket(wsUri);
     websocket.onopen = function(evt) { onOpen(evt) };
@@ -117,7 +117,11 @@
   }
 
   function preventDefaultKeys(event) {
-    if((event.code === 'Space') || (event.code === 'Enter') || (event.code === 'KeyR')) {
+    if((event.code === 'Space') 
+        || (event.code === 'Enter')
+        || (event.code === 'ControlLeft')
+        || (event.ctrlKey === true)
+        || (event.code === 'KeyR')) {
       event.preventDefault();
     }
   }
@@ -132,6 +136,7 @@
       switch(e.key)
       {
         case 'Enter':
+          doSend('\r');
           doSend('\n');
           return;
         default:
@@ -149,9 +154,12 @@
         break;
       case 'v':
         ctrlKey = String.fromCharCode(22);
+        break;
       case 's':
         ctrlKey = String.fromCharCode(19);
+        break;
       case 't':
+      case 'y':
         ctrlKey = String.fromCharCode(20);
         break;
       default:
