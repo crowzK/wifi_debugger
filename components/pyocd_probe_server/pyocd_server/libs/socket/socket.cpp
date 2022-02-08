@@ -37,6 +37,7 @@ void ServerSocket::acceptThread()
     }
     int opt = 1;
     setsockopt(cServerSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+    setsockopt(cServerSocket, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(opt));
 
     struct sockaddr_in addr = {0};
     addr.sin_addr.s_addr = htonl(INADDR_ANY);

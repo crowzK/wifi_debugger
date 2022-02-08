@@ -8,11 +8,12 @@
 #include "file_server.hpp"
 #include "pyocd_server.hpp"
 #include <esp_log.h>
+#include <esp_wifi.h>
 
 extern "C" void app_main(void)
 {
     startProvisioning();
-
+    esp_wifi_set_ps(WIFI_PS_NONE);
     // time zone setting
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
