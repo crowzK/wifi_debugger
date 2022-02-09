@@ -287,14 +287,14 @@ void PyOcdParser::endDocument()
     case Request::flush:
     case Request::get_memory_interface_for_ap:
     {
-        sendOkay();
+        sendInt(0);
         break;
     }
     case Request::read_ap_multiple:
     {
         std::vector<uint32_t> array;
         array.resize(mArrayArgument[1]);
-        if(pSwd->readApMultiple(mArrayArgument[0], array))
+        if(pSwd->readApMultiple(&array[0], array.size()))
         {
             sendArray(array);
         }
@@ -306,7 +306,7 @@ void PyOcdParser::endDocument()
     }
     case Request::write_ap_multiple:
     {
-        if(pSwd->writeApMultiple(mArrayArgument[0], mArrayArgument))
+        if(pSwd->writeApMultiple(&mArrayArgument[1], mArrayArgument.size() - 1))
         {
             sendOkay();
         }
@@ -316,6 +316,58 @@ void PyOcdParser::endDocument()
         }
         break;
     }
+    case Request::read_mem:
+    {
+        uint32_t data;
+        if(pSwd->readMemory(mArrayArgument[1], mArrayArgument[2], data))
+        {
+            sendInt(data);
+        }
+        else
+        {
+            sendError("WifiDebugger: ACK FAULT received");
+        }
+        break;
+    }
+    case Request::write_mem:
+    {
+        if(pSwd->writeMemory(mArrayArgument[1], mArrayArgument[3], mArrayArgument[2]))
+        {
+            sendOkay();
+        }
+        else
+        {
+            sendError("WifiDebugger: ACK FAULT received");
+        }
+        break;
+    }
+    case Request::read_block32:
+    {
+        std::vector<uint32_t> array;
+        array.resize(mArrayArgument[2]);
+        if(pSwd->readMemoryBlcok32(mArrayArgument[1], &array[0], array.size()))
+        {
+            sendArray(array);
+        }
+        else
+        {
+            sendError("WifiDebugger: ACK FAULT received");
+        }
+        break;
+    }
+    case Request::write_block32:
+    {
+        if(pSwd->writeMemoryBlcok32(mArrayArgument[1], &mArrayArgument[2], mArrayArgument.size() - 2))
+        {
+            sendOkay();
+        }
+        else
+        {
+            sendError("WifiDebugger: ACK FAULT received");
+        }
+        break;
+    }
+
     case Request::swd_sequence:
     case Request::jtag_sequence:
     case Request::reset:
@@ -324,10 +376,6 @@ void PyOcdParser::endDocument()
     case Request::swo_start:
     case Request::swo_stop:
     case Request::swo_read:
-    case Request::read_mem:
-    case Request::write_mem:
-    case Request::read_block32:
-    case Request::write_block32:
     case Request::read_block8:
     case Request::write_block8:
     default:
@@ -454,7 +502,7 @@ bool PyOcdServer::serverMain(int acceptSocekt)
         }
         else 
         {
-            // ESP_LOGW(TAG, "%s", rx_buffer);
+            //ESP_LOGW(TAG, "%s", rx_buffer);
             for(int i = 0; i < len; i++)
             {
                 mPaser.parse(rx_buffer[i]);

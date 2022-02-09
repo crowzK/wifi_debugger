@@ -16,7 +16,9 @@ public:
         Mismatch    = 0x10,
         ParityError = 0x12,
     };
+    
     using Cmd = uint8_t;
+    Swd();
     virtual ~Swd() = default;
 
     virtual uint32_t sequence(uint64_t data, uint8_t bitLength) = 0;
@@ -32,8 +34,18 @@ public:
     bool cleareErrors();
     bool readDp(uint8_t addr, uint32_t& dp);
     bool writeDp(uint8_t addr, uint32_t dp);
-    bool readAp(uint8_t addr, uint32_t& ap);
-    bool readApMultiple(uint8_t addr, std::vector<uint32_t>&out);
-    bool writeAp(uint8_t addr, uint32_t ap);
-    bool writeApMultiple(uint8_t addr, std::vector<uint32_t>&in);
+    bool readAp(uint8_t addr, uint32_t& ap, bool dpSelect = false);
+    bool readApMultiple(uint32_t* pBuffer, uint32_t length);
+    bool writeAp(uint8_t addr, uint32_t ap, bool dpSelect = false);
+    bool writeApMultiple(const uint32_t* pBuffer, uint32_t length);
+
+    bool writeMemory(uint32_t addr, uint32_t transferSize, uint32_t data);
+    bool readMemory(uint32_t addr, uint32_t transferSize, uint32_t& data);
+    bool writeMemoryBlcok32(uint32_t addr, const uint32_t* pBuffer, uint32_t length);
+    bool readMemoryBlcok32(uint32_t addr, uint32_t* pBuffer, uint32_t length);
+
+    bool errorCheck(const char* func, Response res);
+
+private:
+    uint32_t mCsw;
 };
