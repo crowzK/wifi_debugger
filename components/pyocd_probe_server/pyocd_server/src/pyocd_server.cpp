@@ -287,7 +287,8 @@ void PyOcdParser::endDocument()
     case Request::flush:
     case Request::get_memory_interface_for_ap:
     {
-        sendInt(0);
+        sendOkay();
+        //sendInt(0);
         break;
     }
     case Request::read_ap_multiple:
@@ -357,7 +358,7 @@ void PyOcdParser::endDocument()
     }
     case Request::write_block32:
     {
-        if(pSwd->writeMemoryBlcok32(mArrayArgument[1], &mArrayArgument[2], mArrayArgument.size() - 2))
+        if(pSwd->writeMemoryBlcok32(mArrayArgument[1], &mArrayArgument[2], mArrayArgument.size() - 3))
         {
             sendOkay();
         }
