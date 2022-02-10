@@ -287,7 +287,8 @@ void PyOcdParser::endDocument()
     case Request::flush:
     case Request::get_memory_interface_for_ap:
     {
-        sendInt(0);
+        sendOkay();
+        //sendInt(0);
         break;
     }
     case Request::read_ap_multiple:
