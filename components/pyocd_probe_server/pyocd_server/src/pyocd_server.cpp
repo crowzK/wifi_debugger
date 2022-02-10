@@ -358,7 +358,8 @@ void PyOcdParser::endDocument()
     }
     case Request::write_block32:
     {
-        if(pSwd->writeMemoryBlcok32(mArrayArgument[1], &mArrayArgument[2], mArrayArgument.size() - 3))
+        ESP_LOGW(TAG, "%s addr %X size %d", Request::toString(mRequest).c_str(), mArrayArgument[1], mArrayArgument.size() - 2);
+        if(pSwd->writeMemoryBlcok32(mArrayArgument[1], &mArrayArgument[2], mArrayArgument.size() - 2))
         {
             sendOkay();
         }
