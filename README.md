@@ -18,5 +18,6 @@
     1. Changeable baud rate
 
 1. pyCOD remote probe
-    1. TODO
+    1. support
+    2. how to use: https://pyocd.io/docs/remote_probe_access.html#client
 
