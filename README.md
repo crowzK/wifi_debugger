@@ -17,7 +17,7 @@
     1. Web-based console terminal
     1. Changeable baud rate
 
-1. pyCOD remote probe
+1. pyCOD remote probe (https://github.com/pyocd/pyOCD)
     1. support
     2. how to use: https://pyocd.io/docs/remote_probe_access.html#client
 
