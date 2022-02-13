@@ -89,6 +89,11 @@ WsHandler::WsHandler() :
 
 esp_err_t WsHandler::wshandler(httpd_req *req)
 {
+    if (req->method == HTTP_GET) {
+        ESP_LOGI(TAG, "Handshake done, the new connection was opened");
+        return ESP_OK;
+    }
+
     if(not DebugMsgRx::get().isAdded(httpd_req_to_sockfd(req)))
     {
         new WebLogSender(req->handle, httpd_req_to_sockfd(req));
@@ -135,7 +140,7 @@ esp_err_t WsHandler::wshandler(httpd_req *req)
         }
         return ret;
     }
-
+    
     tx.resize(ws_pkt.len);
     DebugMsgTx::get().write(tx);
     return ret;
