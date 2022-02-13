@@ -1,7 +1,7 @@
 {
     "configurations": [
         {
-            "name": "ESP-IDF", 
+            "name": "ESP-IDF",
             "cStandard": "c11",
             "cppStandard": "c++14",
             "includePath": [
