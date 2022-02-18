@@ -163,7 +163,14 @@ SpiSwd::Response SpiSwd::write(Cmd cmd, uint32_t data)
     {
         swdptap_seq_out(getCmd(cmd), 8);
         ack = static_cast<Response>(swdptap_seq_in(3));
-        swdptap_seq_out_parity(data, 32);
+        if(ack == Response::Ok)
+        {
+            swdptap_seq_out_parity(data, 32);
+        }
+        else if((ack == Response::Wait) or (ack == Response::Fault))
+        {
+            sequence(0, 1);
+        }
     } while(ack == Response::Wait);
     return ack;
 }
@@ -175,7 +182,14 @@ SpiSwd::Response SpiSwd::read(Cmd cmd, uint32_t& data)
     {
         swdptap_seq_out(getCmd(cmd), 8);
         ack = static_cast<Response>(swdptap_seq_in(3));
-        swdptap_seq_in_parity(&data, 32);
+        if(ack == Response::Ok)
+        {
+            swdptap_seq_in_parity(&data, 32);
+        }
+        else if((ack == Response::Wait) or (ack == Response::Fault))
+        {
+            sequence(0, 1);
+        }
     } while(ack == Response::Wait);
     return ack;
 }
