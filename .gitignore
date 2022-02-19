@@ -2,3 +2,7 @@ build/
 sdkconfig.old
 trace/
 .vscode/settings.json
+*.zip
+schematic/wifi_debugger/#auto_saved_files#
+schematic/wifi_debugger/fp-info-cache
+schematic/wifi_debugger/_autosave-wifi_debugger.kicad_pcb
