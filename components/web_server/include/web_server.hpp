@@ -28,7 +28,7 @@ class UriHandler
 {
 public:
     const httpd_uri_t cUri;
-    UriHandler(const char* uri, httpd_method_t method, esp_err_t (*wsHandler)(httpd_req_t *r) = nullptr);
+    UriHandler(const char* uri, httpd_method_t method, bool wsSocket = false);
     ~UriHandler();
 
     void start(httpd_handle_t serverHandle);

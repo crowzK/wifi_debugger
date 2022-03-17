@@ -54,9 +54,7 @@ public:
     ~WsHandler() = default;
 
 protected:
-    // when web socket handler is called, the httpd_req->user_ctx is null, so it cannot use the userHandler
-    static esp_err_t wshandler(httpd_req *req);
-    esp_err_t userHandler(httpd_req *req) override { return ESP_OK; };
+    esp_err_t userHandler(httpd_req *req) override;
 };
 
 void start_logger_web();
