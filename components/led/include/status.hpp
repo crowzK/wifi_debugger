@@ -40,6 +40,8 @@ public:
 protected:
 #if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
     static constexpr int cLedGpio = 22;
+#elif CONFIG_BOARD_ESP32_C3
+    static constexpr int cLedGpio = GPIO_NUM_MAX;
 #endif
     std::bitset<Error::eSize> mStatus;
     std::recursive_mutex mMutex;

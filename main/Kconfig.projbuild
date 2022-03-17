@@ -12,4 +12,10 @@ menu "ESP32 board options"
         help
             using ttgo t1 board
 
+    config BOARD_ESP32_C3
+        bool "Esp32 C3"
+        default n
+        help
+            using esp32 c3
+
 endmenu

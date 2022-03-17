@@ -30,9 +30,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 static const int RX_BUF_SIZE = 1024;
 
-#define TXD_PIN (GPIO_NUM_17)
-#define RXD_PIN (GPIO_NUM_16)
-
 //*******************************************************************
 // UartTx
 //*******************************************************************
@@ -84,7 +81,7 @@ UartService& UartService::get()
 }
 
 UartService::UartService() :
-    mConfig{.baudRate = 230400, .uartNum = 2}
+    mConfig{.baudRate = 230400, .uartNum = 1}
 {
     init(mConfig);
 }
@@ -106,7 +103,7 @@ void UartService::init(const Config& cfg)
     // We won't use a buffer for sending data.
     ESP_ERROR_CHECK(uart_driver_install(mConfig.uartNum, RX_BUF_SIZE * 2, 0, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(mConfig.uartNum, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(mConfig.uartNum, TXD_PIN, RXD_PIN, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_set_pin(mConfig.uartNum, cTxPin, cRxPin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     
     pUartRx.reset();
     pUartTx.reset();
