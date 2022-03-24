@@ -52,7 +52,7 @@ protected:
     static constexpr int cPinMosi = 8;
     static constexpr int cPinClk = 7;
     static constexpr int cPinCs = 9;
-    static constexpr int cSpiPort = 2;
+    static constexpr int cSpiPort = 1;
 #endif
     std::recursive_mutex mMutex;
 
