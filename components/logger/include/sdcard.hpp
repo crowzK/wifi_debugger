@@ -47,7 +47,7 @@ protected:
     static constexpr int cPinClk = 14;
     static constexpr int cPinCs = 13;
     static constexpr int cSpiPort = 1;
-#elif CONFIG_BOARD_ESP32_C3
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
     static constexpr int cPinMiso = 6;
     static constexpr int cPinMosi = 8;
     static constexpr int cPinClk = 7;

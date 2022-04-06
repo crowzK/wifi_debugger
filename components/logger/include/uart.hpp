@@ -65,7 +65,7 @@ protected:
 #if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
     static constexpr int cTxPin = 17;
     static constexpr int cRxPin = 16;
-#elif CONFIG_BOARD_ESP32_C3
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
     static constexpr int cTxPin = 10;
     static constexpr int cRxPin = 1;
 #endif
