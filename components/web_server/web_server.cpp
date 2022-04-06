@@ -25,12 +25,12 @@ static const char *TAG = "web_sever";
 //*******************************************************************
 // UriHandler
 //*******************************************************************
-UriHandler::UriHandler(const char* uri, httpd_method_t method, esp_err_t (*wsHandler)(httpd_req_t *r)) :
+UriHandler::UriHandler(const char* uri, httpd_method_t method, bool wsSocket) :
     cUri{.uri        = uri,
         .method     = method,
-        .handler    = (wsHandler != nullptr) ? wsHandler : handler,
+        .handler    = handler,
         .user_ctx   = this,
-        .is_websocket = wsHandler != nullptr,
+        .is_websocket = wsSocket,
         .handle_ws_control_frames = false,
         .supported_subprotocol = nullptr
     }

@@ -83,11 +83,11 @@ bool WebLogSender::write(const std::vector<uint8_t>& msg)
 // WsHandler
 //*******************************************************************
 WsHandler::WsHandler() :
-    UriHandler("/ws", HTTP_GET, wshandler)
+    UriHandler("/ws", HTTP_GET, true)
 {
 }
 
-esp_err_t WsHandler::wshandler(httpd_req *req)
+esp_err_t WsHandler::userHandler(httpd_req *req)
 {
     if (req->method == HTTP_GET) {
         ESP_LOGI(TAG, "Handshake done, the new connection was opened");

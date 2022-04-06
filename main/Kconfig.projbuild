@@ -2,7 +2,7 @@ menu "ESP32 board options"
 
     config M5STACK_CORE
         bool "For M5STACK"
-        default y
+        default n
         help
             using m5 stack core
 
@@ -11,5 +11,11 @@ menu "ESP32 board options"
         default n
         help
             using ttgo t1 board
+
+    config WIFI_DEBUGGER_V_0_1
+        bool "Wifi debugger v0.1 main board"
+        default y
+        help
+            Wifi debugger v0.1 main board
 
 endmenu

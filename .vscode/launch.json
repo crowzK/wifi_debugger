@@ -4,7 +4,8 @@
     {
       "type": "espidf",
       "name": "Launch",
-      "request": "launch"
+      "request": "launch",
+      "skipVerifyAppBinBeforeDebug": true
     }
   ]
 }

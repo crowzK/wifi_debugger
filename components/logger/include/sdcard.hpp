@@ -47,6 +47,12 @@ protected:
     static constexpr int cPinClk = 14;
     static constexpr int cPinCs = 13;
     static constexpr int cSpiPort = 1;
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
+    static constexpr int cPinMiso = 6;
+    static constexpr int cPinMosi = 8;
+    static constexpr int cPinClk = 7;
+    static constexpr int cPinCs = 9;
+    static constexpr int cSpiPort = 1;
 #endif
     std::recursive_mutex mMutex;
 

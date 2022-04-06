@@ -32,8 +32,13 @@ public:
     Response read(Cmd cmd, uint32_t& data) override;
 
 protected:
+#if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
     static constexpr gpio_num_t cPinSwClk = (gpio_num_t)23;
     static constexpr gpio_num_t cPinSwDio = (gpio_num_t)19;
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
+    static constexpr gpio_num_t cPinSwClk = (gpio_num_t)4;
+    static constexpr gpio_num_t cPinSwDio = (gpio_num_t)2;
+#endif
 
     inline void delay();
     inline void clkCycle();

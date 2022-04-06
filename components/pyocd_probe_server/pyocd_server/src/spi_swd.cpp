@@ -124,7 +124,7 @@ static inline void swdptap_seq_out_parity(uint32_t MS, int ticks)
 SpiSwd::SpiSwd()
 {
     esp_err_t ret;
-    ESP_LOGI(TAG, "Initializing bus SPI%d...", VSPI_HOST+1);
+    ESP_LOGI(TAG, "Initializing bus SPI%d...", SPI2_HOST+1);
     spi_bus_config_t buscfg={
         .mosi_io_num = cPinSwDio,
         .miso_io_num = -1,
@@ -135,11 +135,11 @@ SpiSwd::SpiSwd()
     };
 
     //Initialize the SPI bus
-    ret = spi_bus_initialize(VSPI_HOST, &buscfg, SPI_DMA_DISABLED);
+    ret = spi_bus_initialize(SPI2_HOST, &buscfg, SPI_DMA_DISABLED);
     ESP_ERROR_CHECK(ret);
-    spi_bus_add_device(VSPI_HOST, &writeCfg, &txspi);
-    spi_bus_add_device(VSPI_HOST, &readCfg, &rxspi);
-    spi_bus_add_device(VSPI_HOST, &writeCfgParity, &txspi_parity);
+    spi_bus_add_device(SPI2_HOST, &writeCfg, &txspi);
+    spi_bus_add_device(SPI2_HOST, &readCfg, &rxspi);
+    spi_bus_add_device(SPI2_HOST, &writeCfgParity, &txspi_parity);
     gpio_set_pull_mode(cPinSwDio, GPIO_PULLUP_ONLY);
 }
 
