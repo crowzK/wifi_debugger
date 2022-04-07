@@ -129,11 +129,13 @@ protected:
 class PyOcdServer : public ServerSocket
 {
 public:
-    PyOcdServer();
-    ~PyOcdServer() = default;
+    static PyOcdServer& create();
 
 protected:
     JSON_Decoder mPaser;
+
+    PyOcdServer();
+    ~PyOcdServer() = default;
 
     bool serverMain(int acceptSocekt) override;    
 };

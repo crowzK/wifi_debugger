@@ -18,7 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include "status.hpp"
 
-Status& Status::get()
+Status& Status::create()
 {
     static Status status;
     return status;

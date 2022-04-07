@@ -25,9 +25,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
  */
 static const char *TAG = "logger";
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // IndexHandler
-//*******************************************************************
+//-------------------------------------------------------------------
+IndexHandler& IndexHandler::create()
+{
+    static IndexHandler ih;
+    return ih;
+}
+
 IndexHandler::IndexHandler() :
     UriHandler("/", HTTP_GET)
 {
@@ -47,11 +53,11 @@ esp_err_t IndexHandler::userHandler(httpd_req *req)
     return ESP_OK;
 }
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // WebLogSender
-//*******************************************************************
+//-------------------------------------------------------------------
 WebLogSender::WebLogSender(httpd_handle_t hd, int fd) :
-    Client(DebugMsgRx::get(),(int)fd),
+    Client(DebugMsgRx::create(),(int)fd),
     hd(hd),
     fd(fd)
 {
@@ -79,9 +85,15 @@ bool WebLogSender::write(const std::vector<uint8_t>& msg)
     return true;
 }
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // WsHandler
-//*******************************************************************
+//-------------------------------------------------------------------
+WsHandler& WsHandler::create()
+{
+    static WsHandler ws;
+    return ws;
+}
+
 WsHandler::WsHandler() :
     UriHandler("/ws", HTTP_GET, true)
 {
@@ -94,7 +106,7 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
         return ESP_OK;
     }
 
-    if(not DebugMsgRx::get().isAdded(httpd_req_to_sockfd(req)))
+    if(not DebugMsgRx::create().isAdded(httpd_req_to_sockfd(req)))
     {
         new WebLogSender(req->handle, httpd_req_to_sockfd(req));
     }
@@ -120,7 +132,7 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
         {
         case Cmd::SubCmd::eUartSetting:
         {
-            const auto cfg = UartService::get().getCfg();
+            const auto cfg = UartService::create().getCfg();
             UartSetting setting(cfg.baudRate, cfg.uartNum);
             auto cmd = setting.getCmd();
             httpd_ws_frame_t ws_pkt = {};
@@ -142,15 +154,6 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
     }
     
     tx.resize(ws_pkt.len);
-    DebugMsgTx::get().write(tx);
+    DebugMsgTx::create().write(tx);
     return ret;
-}
-
-//*******************************************************************
-
-void start_logger_web()
-{
-    static IndexHandler indexHandler;
-    static WsHandler wsHandler;
-    UartService::get();
 }

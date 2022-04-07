@@ -29,24 +29,38 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 class MsgProxy;
 
+//! It's a interface class to receive messages from the proxy.
 class Client
 {
 public:
     const int cId;
     Client(MsgProxy& debugMsg, int id);
     virtual ~Client();
+
+    //! \brief proxy will call this write method to deliver message 
     virtual bool write(const std::vector<uint8_t>& msg) = 0;
 
 protected:
     MsgProxy& mDebugMsg;
 };
 
+//! debug message proxy
+//! It will help broadcast message to the clients
 class MsgProxy : public Task
 {
 public:
+    //! \brief Add client
     bool addClient(Client& client);
+
+    //! \brief Remove client
     bool removeClient(Client& client);
+
+    //! \brief Check whether client is already added or not
     bool isAdded(int id);
+
+    //! \brief Write message for broadcating
+    //! \note it pushes message to the Queue and 
+    //! sendMsg() will pop messages form the queue and send its clients
     bool write(std::vector<uint8_t>& msg);
 
 protected:
@@ -56,6 +70,9 @@ protected:
 
     MsgProxy(const char* cName);
     virtual ~MsgProxy();
+
+    //! \brief send messages to the clients.
+    //! \note child class must call this to send data to the clients.  
     void sendMsg(const std::vector<uint8_t>&msg);
 };
 
@@ -63,7 +80,7 @@ protected:
 class DebugMsgRx : public MsgProxy
 {
 public:
-    static DebugMsgRx& get();
+    static DebugMsgRx& create();
 
 protected:
     DebugMsgRx();
@@ -76,7 +93,7 @@ protected:
 class DebugMsgTx : public MsgProxy
 {
 public:
-    static DebugMsgTx& get();
+    static DebugMsgTx& create();
 
 protected:
     DebugMsgTx();

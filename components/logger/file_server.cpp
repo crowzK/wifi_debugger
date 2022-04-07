@@ -45,7 +45,16 @@ extern "C"
 
 static const char *TAG = "file_server";
 
+//-------------------------------------------------------------------
+// FileServerHandler
+//-------------------------------------------------------------------
 const char* FileServerHandler::cBasePath = "/sdcard";
+FileServerHandler& FileServerHandler::create()
+{
+    static FileServerHandler fs;
+    return fs;
+}
+
 FileServerHandler::FileServerHandler() :
     UriHandler("/log", HTTP_GET),
     mBuffer(new std::array<char, SCRATCH_BUFSIZE>())
@@ -271,9 +280,4 @@ const char* FileServerHandler::get_path_from_uri(char *dest, const char *base_pa
 
     /* Return pointer to path, skipping the base */
     return dest + base_pathlen;
-}
-
-void start_file_server()
-{
-    static FileServerHandler fileSever;
 }

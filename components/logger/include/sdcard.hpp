@@ -24,14 +24,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "sdkconfig.h"
 #include <mutex>
 
+//! It is SD card class inherit logger client
 class SdCard : public Client
 {
 public:
-    SdCard();
-    ~SdCard();
+    //! \brief Create SD card instance
+    static SdCard& create();
+
+    //! \brief Init SD card
     void init();
-    bool write(const char* msg, uint32_t length);
-    bool write(const std::vector<uint8_t>& msg) override;
 
 protected:
     static const char* cMountPoint;
@@ -60,7 +61,20 @@ protected:
     FILE* pFile;
     bool mInited;
 
+    SdCard();
+    ~SdCard();
+
+    //! \brief Create Log file
     FILE* createFile();
+
+    //! \brief Write a mesage to the SD card
+    //! \param msg message pointer
+    //! \param length message length
+    bool write(const char* msg, uint32_t length);
+
+    //! \brief Write a mesage to the SD card
+    //! \param msg message vector
+    bool write(const std::vector<uint8_t>& msg) override;
 };
 
 #endif

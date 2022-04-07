@@ -36,13 +36,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 static const char *TAG = "sdcard";
 const char* SdCard::cMountPoint = "/sdcard";
 
+SdCard& SdCard::create()
+{
+    static SdCard sd;
+    return sd;
+}
+
 SdCard::SdCard() :
-    Client(DebugMsgRx::get(), INT32_MAX),
+    Client(DebugMsgRx::create(), INT32_MAX),
     pSdcard(nullptr),
     pFile(nullptr),
     mInited(false)
 {
-    Status::get().report(Status::Error::eSdcard, true);
+    Status::create().report(Status::Error::eSdcard, true);
     esp_err_t ret;
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
         .format_if_mount_failed = false,
@@ -96,7 +102,7 @@ SdCard::SdCard() :
     }
     sdmmc_card_print_info(stdout, (sdmmc_card_t*)pSdcard);
     mInited = true;
-    Status::get().report(Status::Error::eSdcard, false);
+    Status::create().report(Status::Error::eSdcard, false);
 }
 
 SdCard::~SdCard()

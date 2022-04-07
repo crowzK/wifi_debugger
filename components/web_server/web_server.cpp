@@ -22,9 +22,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 static const char *TAG = "web_sever";
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // UriHandler
-//*******************************************************************
+//-------------------------------------------------------------------
 UriHandler::UriHandler(const char* uri, httpd_method_t method, bool wsSocket) :
     cUri{.uri        = uri,
         .method     = method,
@@ -35,12 +35,12 @@ UriHandler::UriHandler(const char* uri, httpd_method_t method, bool wsSocket) :
         .supported_subprotocol = nullptr
     }
 {
-    WebServer::get().add(*this);
+    WebServer::create().add(*this);
 }
 
 UriHandler::~UriHandler()
 {
-    WebServer::get().remove(*this);
+    WebServer::create().remove(*this);
 }
 
 void UriHandler::start(httpd_handle_t serverHandle)
@@ -71,10 +71,10 @@ esp_err_t UriHandler::handler(httpd_req_t *req)
 }
 
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // WebServer
-//*******************************************************************
-WebServer& WebServer::get()
+//-------------------------------------------------------------------
+WebServer& WebServer::create()
 {
     static WebServer server;
     return server;
