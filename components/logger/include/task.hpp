@@ -22,11 +22,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <thread>
 #include <atomic>
 
+//! A wrapping class for a TASK
 class Task
 {
 public:
+    //! \brief Start TASK
     void start();
+
+    //! \brief Stop TASK
     void stop();
+
+    //! \brief is running task?
     bool isRun() const { return mRun; };
     
 protected:

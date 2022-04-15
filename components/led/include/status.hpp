@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <mutex>
 #include "led.hpp"
 
+//! To indicate Debugger status
 class Status
 {
 public:
@@ -33,8 +34,14 @@ public:
         eSdcard,
         eSize
     };
-    static Status& get();
+
+    //! \brief Create Status single tone instance.
+    static Status& create();
+
+    //! \brief Report Error status
     void report(Error err, bool status);
+
+    //! \brief Get Error status
     bool getError(Error err);
 
 protected:

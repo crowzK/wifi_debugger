@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_http_server.h"
 #include <esp_event.h>
 
+//! URI(Uniform Resource Identifier) handler
 class UriHandler
 {
 public:
@@ -31,22 +32,29 @@ public:
     UriHandler(const char* uri, httpd_method_t method, bool wsSocket = false);
     ~UriHandler();
 
-    void start(httpd_handle_t serverHandle);
-    void stop(httpd_handle_t serverHandle);
-
 protected:
+    friend class WebServer;
     static esp_err_t handler(httpd_req_t *req);
+
+    //! \brief child class must implemantation this handler
     virtual esp_err_t userHandler(httpd_req *req) = 0;
+
+    //! \brief Start URI handler
+    void start(httpd_handle_t serverHandle);
+
+    //! \brief Stop URI handler
+    void stop(httpd_handle_t serverHandle);
 };
 
+//! Web server
 class WebServer
 {
 public:
-    static WebServer& get();
-    void add(UriHandler& handler);
-    void remove(UriHandler& handler);
+    static WebServer& create();
 
 protected:
+    friend class UriHandler;
+
     std::recursive_mutex mMutex;
     std::list<UriHandler*> mUriHandlers;
 
@@ -54,6 +62,12 @@ protected:
 
     WebServer();
     ~WebServer();
+    
+    //! \brief Add URI handler to the server
+    void add(UriHandler& handler);
+
+    //! \brief Remove URI handler from the server
+    void remove(UriHandler& handler);
 };
 
 

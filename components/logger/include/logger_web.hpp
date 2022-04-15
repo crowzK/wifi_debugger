@@ -24,16 +24,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "web_server.hpp"
 #include "debug_msg_handler.hpp"
 
+//! For handling index page
 class IndexHandler : public UriHandler
 {
 public:
-    IndexHandler();
-    ~IndexHandler() = default;
+    //! \brief Create index page handler
+    static IndexHandler& create();
 
 protected:
+    IndexHandler();
+    ~IndexHandler() = default;
     virtual esp_err_t userHandler(httpd_req *req) override;
 };
 
+//! To send log messages(UART) to the user web browser.
 class WebLogSender : public Client
 {
 public:
@@ -44,19 +48,21 @@ public:
     ~WebLogSender();
 
 protected:
-    bool write(const std::vector<uint8_t>& msg);
+    bool write(const std::vector<uint8_t>& msg) override;
 };
 
+//! Web sockek handler
+//! This will handle the message from the client
 class WsHandler : public UriHandler
 {
 public:
-    WsHandler();
-    ~WsHandler() = default;
+    //! \brief Create web socket handler
+    static WsHandler& create();
 
 protected:
+    WsHandler();
+    ~WsHandler() = default;
     esp_err_t userHandler(httpd_req *req) override;
 };
-
-void start_logger_web();
 
 #endif //LOGGER_WEB_H

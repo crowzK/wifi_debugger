@@ -31,19 +31,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 class FileServerHandler : public UriHandler
 {
 public:
-    FileServerHandler();
-    ~FileServerHandler() = default;
+    static FileServerHandler& create();
 
 protected:
     static const char* cBasePath;
     std::unique_ptr<std::array<char, SCRATCH_BUFSIZE>> mBuffer;
     
+    FileServerHandler();
+    ~FileServerHandler() = default;
+
     esp_err_t userHandler(httpd_req *req) override;
     esp_err_t set_content_type_from_file(httpd_req_t *req, const char *filename);
     const char* get_path_from_uri(char *dest, const char *base_path, const char *uri, size_t destsize);
     esp_err_t http_resp_dir_html(httpd_req_t *req, const char *dirpath);
 };
-
-void start_file_server();
 
 #endif //FILE_SERVER_HPP

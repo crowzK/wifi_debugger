@@ -495,6 +495,12 @@ void PyOcdParser::error( const char *message )
 //-------------------------------------------------------------------
 // PyOcdServer
 //-------------------------------------------------------------------
+PyOcdServer& PyOcdServer::create()
+{
+    static PyOcdServer server;
+    return server;
+}
+
 PyOcdServer::PyOcdServer() : 
     ServerSocket(5555)
 {

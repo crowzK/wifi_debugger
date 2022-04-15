@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "debug_msg_handler.hpp"
 #include "task.hpp"
 
+//! For sending message through UART
 class UartTx : public Client
 {
 public:
@@ -34,9 +35,10 @@ public:
     
 protected:
     const int cUartNum;
-    bool write(const std::vector<uint8_t>& msg);
+    bool write(const std::vector<uint8_t>& msg) override;
 };
 
+//! For receinv message from the UART
 class UartRx : public Task
 {
 public:
@@ -48,6 +50,7 @@ protected:
     void task() override;
 };
 
+//! For send/recv message through UART
 class UartService
 {
 public:
@@ -57,7 +60,7 @@ public:
         int uartNum;
     };
 
-    static UartService& get();
+    static UartService& create();
     void init(const Config& cfg);
     const Config& getCfg() const { return mConfig; };
 

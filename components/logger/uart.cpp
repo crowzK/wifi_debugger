@@ -30,11 +30,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 static const int RX_BUF_SIZE = 1024;
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // UartTx
-//*******************************************************************
+//-------------------------------------------------------------------
 UartTx::UartTx(int uartPortNum):
-    Client(DebugMsgTx::get(), uartPortNum),
+    Client(DebugMsgTx::create(), uartPortNum),
     cUartNum(uartPortNum)
 {
 }
@@ -45,9 +45,9 @@ bool UartTx::write(const std::vector<uint8_t>& msg)
     return true;
 }
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // UartRx
-//*******************************************************************
+//-------------------------------------------------------------------
 UartRx::UartRx(int uartPortNum):
     Task(__func__),
     cUartNum(uartPortNum)
@@ -65,16 +65,16 @@ void UartRx::task()
         if(rxBytes)
         {
             rcvBuffer.resize(rxBytes);
-            DebugMsgRx::get().write(rcvBuffer);
+            DebugMsgRx::create().write(rcvBuffer);
         }
     }
 }
 
-//*******************************************************************
+//-------------------------------------------------------------------
 // UartService
-//*******************************************************************
+//-------------------------------------------------------------------
 
-UartService& UartService::get()
+UartService& UartService::create()
 {
     static UartService service;
     return service;

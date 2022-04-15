@@ -38,11 +38,15 @@ extern "C" void app_main(void)
     sntp_init();
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
-    start_logger_web();
-    static PyOcdServer pyocd;
+
+    IndexHandler::create();
+    WsHandler::create();
+    UartService::create();
+    PyOcdServer::create();
     
-    static SdCard sdcard;
-    start_file_server();
+    SdCard& sdcard = SdCard::create();
+    FileServerHandler::create();
+    
     while(sntp_getreachability(0) == 0)
     {
         vTaskDelay(100);

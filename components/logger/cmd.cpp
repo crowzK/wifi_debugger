@@ -55,7 +55,7 @@ std::vector<uint8_t> Cmd::getCmd()
 UartSetting::UartSetting(int baudrate, int port) :
     Cmd(Type::eServerToClient, SubCmd::eUartSetting)
 {
-    std::string uart = Status::get().getError(Status::Error::eSdcard) ? "SD Error" : "SD Okay";
+    std::string uart = Status::create().getError(Status::Error::eSdcard) ? "SD Error" : "SD Okay";
     std::ostringstream cmd;
     cmd << baudrate << " " << port << " " << uart;
     mCmd = cmd.str();
