@@ -16,53 +16,33 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef SDCARD_HPP
-#define SDCARD_HPP
+#ifndef LOG_FILE_HPP
+#define LOG_FILE_HPP
 
 #include <stdio.h>
-#include "debug_msg_handler.hpp"
-#include "sdkconfig.h"
 #include <mutex>
+#include <string>
+#include "debug_msg_handler.hpp"
+#include "fs_manager.hpp"
 
 //! It is SD card class inherit logger client
-class SdCard : public Client
+class LogFile : public Client
 {
 public:
-    //! \brief Create SD card instance
-    static SdCard& create();
-
-    //! \brief Init SD card
+    static LogFile& create();
     void init();
+    const std::string getFilePath();
 
 protected:
-    static const char* cMountPoint;
-#if CONFIG_M5STACK_CORE
-    static constexpr int cPinMiso = 19;
-    static constexpr int cPinMosi = 23;
-    static constexpr int cPinClk = 18;
-    static constexpr int cPinCs = 4;
-    static constexpr int cSpiPort = 2;
-#elif CONFIG_TTGO_T1
-    static constexpr int cPinMiso = 2;
-    static constexpr int cPinMosi = 15;
-    static constexpr int cPinClk = 14;
-    static constexpr int cPinCs = 13;
-    static constexpr int cSpiPort = 1;
-#elif CONFIG_WIFI_DEBUGGER_V_0_1
-    static constexpr int cPinMiso = 6;
-    static constexpr int cPinMosi = 8;
-    static constexpr int cPinClk = 7;
-    static constexpr int cPinCs = 9;
-    static constexpr int cSpiPort = 1;
-#endif
     std::recursive_mutex mMutex;
+    FsManager& mFsManager;
+    const char* cMountPoint;
 
-    void* pSdcard;
     FILE* pFile;
-    bool mInited;
+    std::string mFilePath;
 
-    SdCard();
-    ~SdCard();
+    LogFile();
+    ~LogFile();
 
     //! \brief Create Log file
     FILE* createFile();

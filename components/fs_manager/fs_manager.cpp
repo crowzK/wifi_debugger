@@ -16,33 +16,47 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include <esp_log.h>
-#include <esp_wifi.h>
-#include "logger_web.hpp"
-#include "uart.hpp"
-#include "blocking_queue.hpp"
-#include "provisioning_manager.hpp"
-#include "sntp.h"
-#include "sdkconfig.h"
-#include "file_server.hpp"
-#include "pyocd_server.hpp"
-#include "log_file.hpp"
+#include "fs_manager.hpp"
+#include "sdcard.hpp"
 
-extern "C" void app_main(void)
+const char* FsManager::cMountPoint = "/sdcard";
+
+FsManager& FsManager::create()
 {
-    startProvisioning();
-    esp_wifi_set_ps(WIFI_PS_NONE);
-    // time zone setting
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-    setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
-    tzset();
+    static FsManager fm;
+    return fm;
+}
 
-    IndexHandler::create();
-    WsHandler::create();
-    UartService::create();
-    PyOcdServer::create();
-    FileServerHandler::create();
-    LogFile::create().init();
+FsManager::FsManager()
+{
+    mount();
+}
+
+FsManager::~FsManager()
+{
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    umount();
+}
+
+bool FsManager::mount()
+{
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+
+    if(not mpSdcard)
+    {
+        mpSdcard = std::make_unique<SdCard>(cMountPoint);
+    }
+    return true;
+}
+
+bool FsManager::umount()
+{
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+
+    // Does not support unmount yet.
+    //if(mpSdcard)
+    //{
+    //    mpSdcard.reset();
+    //}
+    return true;
 }
