@@ -50,6 +50,12 @@ protected:
     static constexpr int cPinClk = 7;
     static constexpr int cPinCs = 9;
     static constexpr int cSpiPort = 1;
+#elif CONFIG_WIFI_DEBUGGER_V_0_2
+    static constexpr int cPinMiso = 3;
+    static constexpr int cPinMosi = 1;
+    static constexpr int cPinClk = 2;
+    static constexpr int cPinCs = 10;
+    static constexpr int cSpiPort = 1;
 #endif
     void* pSdcard;
 };

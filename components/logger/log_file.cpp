@@ -43,6 +43,7 @@ LogFile::LogFile() :
     cMountPoint(mFsManager.getMountPoint()),
     pFile(nullptr)
 {
+    Status::create();
 }
 
 LogFile::~LogFile()

@@ -49,6 +49,8 @@ protected:
     static constexpr int cLedGpio = 22;
 #elif CONFIG_WIFI_DEBUGGER_V_0_1
     static constexpr int cLedGpio = GPIO_NUM_MAX;
+#elif CONFIG_WIFI_DEBUGGER_V_0_2
+    static constexpr int cLedGpio = 0;
 #endif
     std::bitset<Error::eSize> mStatus;
     std::recursive_mutex mMutex;

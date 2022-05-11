@@ -14,8 +14,14 @@ menu "ESP32 board options"
 
     config WIFI_DEBUGGER_V_0_1
         bool "Wifi debugger v0.1 main board"
-        default y
+        default n
         help
             Wifi debugger v0.1 main board
+
+    config WIFI_DEBUGGER_V_0_2
+        bool "Wifi debugger v0.2 main board"
+        default y
+        help
+            Wifi debugger v0.2 main board
 
 endmenu
