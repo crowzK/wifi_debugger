@@ -71,6 +71,9 @@ protected:
 #elif CONFIG_WIFI_DEBUGGER_V_0_1
     static constexpr int cTxPin = 10;
     static constexpr int cRxPin = 1;
+#elif CONFIG_WIFI_DEBUGGER_V_0_2
+    static constexpr int cTxPin = 21;
+    static constexpr int cRxPin = 20;
 #endif
 
     Config mConfig;
