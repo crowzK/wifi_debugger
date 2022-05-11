@@ -16,7 +16,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "sdcard.hpp"
+#include "log_file.hpp"
 #include <stdio.h>
 #include <string.h>
 #include <sys/unistd.h>
@@ -24,108 +24,61 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_err.h"
 #include "esp_log.h"
 #include "esp_vfs_fat.h"
-#include "driver/sdspi_host.h"
-#include "driver/spi_common.h"
-#include "sdmmc_cmd.h"
-#include "sdkconfig.h"
-#include "driver/sdmmc_host.h"
 #include <sstream>
 #include "status.hpp"
+#include "sntp.h"
 
 
-static const char *TAG = "sdcard";
-const char* SdCard::cMountPoint = "/sdcard";
+static const char *TAG = "logFile";
 
-SdCard& SdCard::create()
+LogFile& LogFile::create()
 {
-    static SdCard sd;
-    return sd;
+    static LogFile lf;
+    return lf;
 }
 
-SdCard::SdCard() :
+LogFile::LogFile() :
     Client(DebugMsgRx::create(), INT32_MAX),
-    pSdcard(nullptr),
-    pFile(nullptr),
-    mInited(false)
+    mFsManager(FsManager::create()),
+    cMountPoint(mFsManager.getMountPoint()),
+    pFile(nullptr)
 {
-    Status::create().report(Status::Error::eSdcard, true);
-    esp_err_t ret;
-    esp_vfs_fat_sdmmc_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
-        .max_files = 5,
-        .allocation_unit_size = 16 * 1024
-    };
-    ESP_LOGI(TAG, "Initializing SD card");
-
-    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
-    host.slot = cSpiPort;
-
-    spi_bus_config_t bus_cfg = {
-        .mosi_io_num = cPinMosi,
-        .miso_io_num = cPinMiso,
-        .sclk_io_num = cPinClk,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
-        .max_transfer_sz = 4000,
-    };
-    ret = spi_bus_initialize((spi_host_device_t)host.slot, &bus_cfg, SPI_DMA_CH_AUTO);
-    if (ret != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to initialize bus.");
-        return;
-    }
-
-    // This initializes the slot without card detect (CD) and write protect (WP) signals.
-    // Modify slot_config.gpio_cd and slot_config.gpio_wp if your board has these signals.
-    sdspi_device_config_t slot_config = 
-    {
-        .host_id = (spi_host_device_t)cSpiPort,
-        .gpio_cs = (gpio_num_t)cPinCs,
-        .gpio_cd = GPIO_NUM_NC,
-        .gpio_wp = GPIO_NUM_NC,
-        .gpio_int = GPIO_NUM_NC
-    };
-
-    ret = esp_vfs_fat_sdspi_mount(cMountPoint, &host, &slot_config, &mount_config, (sdmmc_card_t**)&pSdcard);
-    if (ret != ESP_OK)
-    {
-        if (ret == ESP_FAIL)
-        {
-            ESP_LOGE(TAG, "Failed to mount filesystem. "
-                "If you want the card to be formatted, set the EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
-        }
-        else
-        {
-            ESP_LOGE(TAG, "Failed to initialize the card (%s). "
-                "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
-        }
-        return;
-    }
-    sdmmc_card_print_info(stdout, (sdmmc_card_t*)pSdcard);
-    mInited = true;
-    Status::create().report(Status::Error::eSdcard, false);
 }
 
-SdCard::~SdCard()
+LogFile::~LogFile()
 {
     if(pFile)
     {
         fclose(pFile);
     }
-    esp_vfs_fat_sdcard_unmount(cMountPoint, (sdmmc_card_t*)pSdcard);
-    spi_bus_free((spi_host_device_t)cSpiPort);
 }
 
-void SdCard::init()
+void LogFile::init()
 {
     std::lock_guard<std::recursive_mutex> lock(mMutex);
-    if(not mInited)
+
+    while(sntp_getreachability(0) == 0)
     {
-        return;
+        vTaskDelay(100);
     }
-    pFile = createFile();
+    if(mFsManager.mount())
+    {
+        pFile = createFile();
+        Status::create().report(Status::Error::eSdcard, true);
+    }
+    else
+    {
+        Status::create().report(Status::Error::eSdcard, false);
+    }
 }
 
-FILE* SdCard::createFile()
+const std::string LogFile::getFilePath()
+{
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    return mFilePath;
+}
+
+FILE* LogFile::createFile()
 {
     std::lock_guard<std::recursive_mutex> lock(mMutex);
 
@@ -177,14 +130,15 @@ FILE* SdCard::createFile()
         }
     }
     path << "/" << local.tm_year << "-"  << local.tm_mon << "-" << local.tm_mday << "T" << local.tm_hour << "_" << local.tm_min << "_" << local.tm_sec << ".log";
-    ESP_LOGI(TAG, "File Open(%s)", path.str().c_str());
-    return fopen(path.str().c_str(), "w");
+    mFilePath = path.str();
+    ESP_LOGI(TAG, "File Open(%s)",mFilePath.c_str());
+    return fopen(mFilePath.c_str(), "w");
 }
 
-bool SdCard::write(const char* msg, uint32_t length)
+bool LogFile::write(const char* msg, uint32_t length)
 {
     std::lock_guard<std::recursive_mutex> lock(mMutex);
-    if((not mInited) or (pFile == nullptr))
+    if(pFile == nullptr)
     {
         return true;
     }
@@ -195,7 +149,7 @@ bool SdCard::write(const char* msg, uint32_t length)
     return true;
 }
 
-bool SdCard::write(const std::vector<uint8_t>& msg)
+bool LogFile::write(const std::vector<uint8_t>& msg)
 {
     return write((char*)msg.data(), msg.size());
 }

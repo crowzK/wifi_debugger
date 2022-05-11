@@ -41,14 +41,13 @@ extern "C"
 #include "esp_vfs.h"
 #include "esp_http_server.h"
 #include "file_server.hpp"
-
+#include "fs_manager.hpp"
 
 static const char *TAG = "file_server";
 
 //-------------------------------------------------------------------
 // FileServerHandler
 //-------------------------------------------------------------------
-const char* FileServerHandler::cBasePath = "/sdcard";
 FileServerHandler& FileServerHandler::create()
 {
     static FileServerHandler fs;
@@ -57,9 +56,11 @@ FileServerHandler& FileServerHandler::create()
 
 FileServerHandler::FileServerHandler() :
     UriHandler("/log", HTTP_GET),
+    cBasePath(FsManager::create().getMountPoint()),
     mBuffer(new std::array<char, SCRATCH_BUFSIZE>())
 {
     ESP_LOGI(TAG, "start");
+    FsManager::create().mount();
 }
 
 esp_err_t FileServerHandler::userHandler(httpd_req *req)

@@ -34,7 +34,7 @@ public:
     static FileServerHandler& create();
 
 protected:
-    static const char* cBasePath;
+    const char* cBasePath;
     std::unique_ptr<std::array<char, SCRATCH_BUFSIZE>> mBuffer;
     
     FileServerHandler();

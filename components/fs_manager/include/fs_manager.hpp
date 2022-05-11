@@ -16,33 +16,39 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include <esp_log.h>
-#include <esp_wifi.h>
-#include "logger_web.hpp"
-#include "uart.hpp"
-#include "blocking_queue.hpp"
-#include "provisioning_manager.hpp"
-#include "sntp.h"
-#include "sdkconfig.h"
-#include "file_server.hpp"
-#include "pyocd_server.hpp"
-#include "log_file.hpp"
+#ifndef FILE_SYSTEM_MANAGER_HPP
+#define FILE_SYSTEM_MANAGER_HPP
 
-extern "C" void app_main(void)
+#include <memory>
+#include <mutex>
+
+class SdCard;
+
+class FsManager
 {
-    startProvisioning();
-    esp_wifi_set_ps(WIFI_PS_NONE);
-    // time zone setting
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
-    setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
-    tzset();
+public:
+    static FsManager& create();
 
-    IndexHandler::create();
-    WsHandler::create();
-    UartService::create();
-    PyOcdServer::create();
-    FileServerHandler::create();
-    LogFile::create().init();
-}
+    bool mount();
+    bool umount();
+    const char* getMountPoint()
+    {
+        return cMountPoint;
+    }
+
+    bool isMount()
+    {
+        std::lock_guard<std::recursive_mutex> lock(mMutex);
+        return mpSdcard != nullptr;        
+    }
+
+protected:
+    static const char* cMountPoint;
+    std::recursive_mutex mMutex;
+    std::unique_ptr<SdCard> mpSdcard;
+
+    FsManager();
+    ~FsManager();
+};
+
+#endif // FILE_SYSTEM_MANAGER_HPP
