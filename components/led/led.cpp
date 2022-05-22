@@ -27,6 +27,7 @@ Led::Led(gpio_num_t gpio) :
         gpio_reset_pin(cGpio);
         /* Set the GPIO as a push/pull output */
         gpio_set_direction(cGpio, GPIO_MODE_OUTPUT);
+        gpio_set_drive_capability(cGpio, GPIO_DRIVE_CAP_3);
     }
 }
 
