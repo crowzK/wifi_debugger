@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_flash_partitions.h"
 #include "esp_partition.h"
 #include "errno.h"
+#include "ota.hpp"
 
 #define BUFFSIZE 1024
 #define HASH_LEN 32 /* SHA-256 digest length */
@@ -45,7 +46,68 @@ static void print_sha256 (const uint8_t *image_hash, const char *label)
     ESP_LOGI(TAG, "%s: %s", label, hash_print);
 }
 
-static void ota_example_task(void *pvParameter)
+Ota& Ota::create()
+{
+    static Ota ota;
+    return ota;
+}
+
+Ota::Ota()
+{
+    uint8_t sha_256[HASH_LEN] = { 0 };
+    esp_partition_t partition;
+
+    // get sha256 digest for the partition table
+    partition.address   = ESP_PARTITION_TABLE_OFFSET;
+    partition.size      = ESP_PARTITION_TABLE_MAX_LEN;
+    partition.type      = ESP_PARTITION_TYPE_DATA;
+    esp_partition_get_sha256(&partition, sha_256);
+    print_sha256(sha_256, "SHA-256 for the partition table: ");
+
+    // get sha256 digest for bootloader
+    partition.address   = ESP_BOOTLOADER_OFFSET;
+    partition.size      = ESP_PARTITION_TABLE_OFFSET;
+    partition.type      = ESP_PARTITION_TYPE_APP;
+    esp_partition_get_sha256(&partition, sha_256);
+    print_sha256(sha_256, "SHA-256 for bootloader: ");
+
+    // get sha256 digest for running partition
+    esp_partition_get_sha256(esp_ota_get_running_partition(), sha_256);
+    print_sha256(sha_256, "SHA-256 for current firmware: ");
+
+    const esp_partition_t *running = esp_ota_get_running_partition();
+    const esp_partition_t *update_partition = NULL;
+    const esp_partition_t *configured = esp_ota_get_boot_partition();
+
+    esp_ota_img_states_t ota_state;
+    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK)
+    {
+        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY)
+        {
+            // run diagnostic function ...
+        }
+    }
+
+    if (configured != running) {
+        ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
+                    configured->address, running->address);
+        ESP_LOGW(TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
+    }
+    ESP_LOGI(TAG, "Running partition type %d subtype %d (offset 0x%08x)",
+                running->type, running->subtype, running->address);
+
+    update_partition = esp_ota_get_next_update_partition(NULL);
+    assert(update_partition != NULL);
+    ESP_LOGI(TAG, "Writing to partition subtype %d at offset 0x%x",
+                update_partition->subtype, update_partition->address);
+
+    esp_app_desc_t running_app_info;
+    if (esp_ota_get_partition_description(running, &running_app_info) == ESP_OK) {
+        ESP_LOGI(TAG, "Running firmware version: %s", running_app_info.version);
+    }
+}
+
+void Ota::update(const std::string& filePath)
 {
     esp_err_t err;
     /* update handle : set by esp_ota_begin(), must be freed via esp_ota_end() */
@@ -57,7 +119,8 @@ static void ota_example_task(void *pvParameter)
     const esp_partition_t *configured = esp_ota_get_boot_partition();
     const esp_partition_t *running = esp_ota_get_running_partition();
 
-    if (configured != running) {
+    if (configured != running) 
+    {
         ESP_LOGW(TAG, "Configured OTA boot partition at offset 0x%08x, but running from offset 0x%08x",
                  configured->address, running->address);
         ESP_LOGW(TAG, "(This can happen if either the OTA boot data or preferred boot image become corrupted somehow.)");
@@ -71,61 +134,65 @@ static void ota_example_task(void *pvParameter)
              update_partition->subtype, update_partition->address);
 
     int binary_file_length = 0;
-    /*deal with all receive packet*/
-    bool image_header_was_checked = false;
+
+    esp_app_desc_t new_app_info;
+    int data_read = 0; // TODO read header
+    if (data_read > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t))
+    {
+        // check current version with downloading
+        memcpy(&new_app_info, &ota_write_data[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
+        ESP_LOGI(TAG, "New firmware version: %s", new_app_info.version);
+
+        esp_app_desc_t running_app_info;
+        if (esp_ota_get_partition_description(running, &running_app_info) == ESP_OK) 
+        {
+            ESP_LOGI(TAG, "Running firmware version: %s", running_app_info.version);
+        }
+
+        const esp_partition_t* last_invalid_app = esp_ota_get_last_invalid_partition();
+        esp_app_desc_t invalid_app_info;
+        if (esp_ota_get_partition_description(last_invalid_app, &invalid_app_info) == ESP_OK) 
+        {
+            ESP_LOGI(TAG, "Last invalid firmware version: %s", invalid_app_info.version);
+        }
+
+        // check current version with last invalid partition
+        if (last_invalid_app != NULL)
+        {
+            if (memcmp(invalid_app_info.version, new_app_info.version, sizeof(new_app_info.version)) == 0) 
+            {
+                ESP_LOGW(TAG, "New version is the same as invalid version.");
+                ESP_LOGW(TAG, "Previously, there was an attempt to launch the firmware with %s version, but it failed.", invalid_app_info.version);
+                ESP_LOGW(TAG, "The firmware has been rolled back to the previous version.");
+            }
+        }
+        if (memcmp(new_app_info.version, running_app_info.version, sizeof(new_app_info.version)) == 0) 
+        {
+            ESP_LOGW(TAG, "Current running version is the same as a new. We will not continue the update.");
+        }
+    } 
+    else 
+    {
+        ESP_LOGE(TAG, "received package is not fit len");
+        esp_restart();
+        return ;
+    }
+
+    err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &update_handle);
+    if (err != ESP_OK)
+    {
+        ESP_LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
+        esp_ota_abort(update_handle);
+        esp_restart();
+        return ;
+    }
+    ESP_LOGI(TAG, "esp_ota_begin succeeded");
+
     while (1) 
     {
-        int data_read = 0;
+        int data_read = 0; // TODO read firmware
         if (data_read > 0) 
         {
-            if (image_header_was_checked == false)
-            {
-                esp_app_desc_t new_app_info;
-                if (data_read > sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t))
-                {
-                    // check current version with downloading
-                    memcpy(&new_app_info, &ota_write_data[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
-                    ESP_LOGI(TAG, "New firmware version: %s", new_app_info.version);
-
-                    esp_app_desc_t running_app_info;
-                    if (esp_ota_get_partition_description(running, &running_app_info) == ESP_OK) {
-                        ESP_LOGI(TAG, "Running firmware version: %s", running_app_info.version);
-                    }
-
-                    const esp_partition_t* last_invalid_app = esp_ota_get_last_invalid_partition();
-                    esp_app_desc_t invalid_app_info;
-                    if (esp_ota_get_partition_description(last_invalid_app, &invalid_app_info) == ESP_OK) {
-                        ESP_LOGI(TAG, "Last invalid firmware version: %s", invalid_app_info.version);
-                    }
-
-                    // check current version with last invalid partition
-                    if (last_invalid_app != NULL)
-                    {
-                        if (memcmp(invalid_app_info.version, new_app_info.version, sizeof(new_app_info.version)) == 0) {
-                            ESP_LOGW(TAG, "New version is the same as invalid version.");
-                            ESP_LOGW(TAG, "Previously, there was an attempt to launch the firmware with %s version, but it failed.", invalid_app_info.version);
-                            ESP_LOGW(TAG, "The firmware has been rolled back to the previous version.");
-                        }
-                    }
-                    if (memcmp(new_app_info.version, running_app_info.version, sizeof(new_app_info.version)) == 0) {
-                        ESP_LOGW(TAG, "Current running version is the same as a new. We will not continue the update.");
-                    }
-
-                    image_header_was_checked = true;
-
-                    err = esp_ota_begin(update_partition, OTA_WITH_SEQUENTIAL_WRITES, &update_handle);
-                    if (err != ESP_OK) {
-                        ESP_LOGE(TAG, "esp_ota_begin failed (%s)", esp_err_to_name(err));
-                        esp_ota_abort(update_handle);
-                    }
-                    ESP_LOGI(TAG, "esp_ota_begin succeeded");
-                } 
-                else 
-                {
-                    ESP_LOGE(TAG, "received package is not fit len");
-                    esp_ota_abort(update_handle);
-                }
-            }
             err = esp_ota_write( update_handle, (const void *)ota_write_data, data_read);
             if (err != ESP_OK)
             {
@@ -168,38 +235,3 @@ static void ota_example_task(void *pvParameter)
     return ;
 }
 
-void app_main(void)
-{
-    uint8_t sha_256[HASH_LEN] = { 0 };
-    esp_partition_t partition;
-
-    // get sha256 digest for the partition table
-    partition.address   = ESP_PARTITION_TABLE_OFFSET;
-    partition.size      = ESP_PARTITION_TABLE_MAX_LEN;
-    partition.type      = ESP_PARTITION_TYPE_DATA;
-    esp_partition_get_sha256(&partition, sha_256);
-    print_sha256(sha_256, "SHA-256 for the partition table: ");
-
-    // get sha256 digest for bootloader
-    partition.address   = ESP_BOOTLOADER_OFFSET;
-    partition.size      = ESP_PARTITION_TABLE_OFFSET;
-    partition.type      = ESP_PARTITION_TYPE_APP;
-    esp_partition_get_sha256(&partition, sha_256);
-    print_sha256(sha_256, "SHA-256 for bootloader: ");
-
-    // get sha256 digest for running partition
-    esp_partition_get_sha256(esp_ota_get_running_partition(), sha_256);
-    print_sha256(sha_256, "SHA-256 for current firmware: ");
-
-    const esp_partition_t *running = esp_ota_get_running_partition();
-    esp_ota_img_states_t ota_state;
-    if (esp_ota_get_state_partition(running, &ota_state) == ESP_OK)
-    {
-        if (ota_state == ESP_OTA_IMG_PENDING_VERIFY)
-        {
-            // run diagnostic function ...
-        }
-    }
-
-    xTaskCreate(&ota_example_task, "ota_example_task", 8192, NULL, 5, NULL);
-}

@@ -16,26 +16,31 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef OTA_HPP
-#define OTA_HPP
+#ifndef FILE_HPP
+#define FILE_HPP
 
-#include <string>
+#include <memory>
+#include <mutex>
 #include <vector>
 
-class Ota
+class FsManager;
+
+class File
 {
 public:
-    static Ota& create();
+    static bool isFileExists(const std::string& filePath);
+    File();
+    ~File() = default;
 
-    //! \brief Firmware update with given file
-    void update(const std::string& filePath);
-
-    //! \brief Search firmware binary files from the SD card
-    std::vector<const std::string> searchBins();
+    bool open(const std::string& filePath);
+    bool close();
+    int write(const std::vector<uint8_t>& data);
+    std::vector<uint8_t> read(int count);
 
 protected:
-    Ota();
-    ~Ota() = default;
+    std::recursive_mutex mMutex;
+    const std::string cFilePath;
+    FsManager& mFsManager;
 };
 
-#endif // OTA_HPP
+#endif // FILE_HPP
