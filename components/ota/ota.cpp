@@ -18,6 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 
 #include <string.h>
+#include <dirent.h> 
 #include <fstream>
 #include <filesystem>
 #include "esp_system.h"
@@ -152,6 +153,27 @@ bool Ota::firmwareBinCheck(uint8_t* binHeader) const
         return false;
     }
     return true;
+}
+
+std::vector<std::string> Ota::searchBins()
+{
+    std::vector<std::string> bins;
+    std::string path(FsManager::create().getMountPoint());
+    path += "/firmware";
+
+    struct dirent *dir;
+    DIR *d = opendir(path.c_str());
+    if(d == nullptr)
+    {
+        return bins;
+    }
+
+    while((dir = readdir(d)) != NULL) 
+    {
+        bins.push_back(std::string(dir->d_name));
+    }
+    closedir(d);
+    return bins;
 }
 
 void Ota::update(const std::string& filePath)

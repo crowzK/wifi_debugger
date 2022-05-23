@@ -31,7 +31,7 @@ public:
     void update(const std::string& filePath);
 
     //! \brief Search firmware binary files from the SD card
-    std::vector<const std::string> searchBins();
+    std::vector<std::string> searchBins();
 
 protected:
     Ota();
