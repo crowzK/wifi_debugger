@@ -21,7 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "logger_web.hpp"
 #include "uart.hpp"
 #include "blocking_queue.hpp"
-#include "provisioning_manager.hpp"
+#include "network_manager.hpp"
 #include "sntp.h"
 #include "sdkconfig.h"
 #include "file_server.hpp"
