@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_flash_partitions.h"
 #include "esp_partition.h"
 #include "ota.hpp"
+#include "fs_manager.hpp"
 
 #define HASH_LEN 32 /* SHA-256 digest length */
 
@@ -120,6 +121,7 @@ bool Ota::firmwareBinCheck(uint8_t* binHeader) const
     // check current version with downloading
     memcpy(&new_app_info, &binHeader[sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t)], sizeof(esp_app_desc_t));
     ESP_LOGI(TAG, "New firmware version: %s", new_app_info.version);
+    ESP_LOGI(TAG, "New firmware version");
 
     esp_app_desc_t running_app_info;
     if (esp_ota_get_partition_description(running, &running_app_info) == ESP_OK) 
@@ -158,12 +160,13 @@ void Ota::update(const std::string& filePath)
     buffer.resize(1024);
 
     ESP_LOGI(TAG, "Starting OTA example");
+    FsManager::create().mount();
 
-    if(not std::filesystem::exists(filePath))
-    {
-        ESP_LOGE(TAG, "File(%s) not exist", filePath.c_str());
-        return;
-    }
+    //if(not std::filesystem::exists(filePath))
+    //{
+    //    ESP_LOGE(TAG, "File(%s) not exist", filePath.c_str());
+    //    return;
+    //}
 
     std::ifstream bin(filePath, std::ios_base::binary);
     if(not bin)
@@ -174,7 +177,7 @@ void Ota::update(const std::string& filePath)
 
     const uint32_t cHeaderSize = sizeof(esp_image_header_t) + sizeof(esp_image_segment_header_t) + sizeof(esp_app_desc_t);
     bin.read(reinterpret_cast<char*>(buffer.data()), cHeaderSize);
-    if(not bin and firmwareBinCheck(buffer.data()))
+    if(not bin or not firmwareBinCheck(buffer.data()))
     {
         ESP_LOGE(TAG, "File(%s) check fail", filePath.c_str());
         return;
@@ -198,6 +201,7 @@ void Ota::update(const std::string& filePath)
     }
     ESP_LOGI(TAG, "esp_ota_begin succeeded");
 
+    bin.seekg(0, std::ios::beg); // back to the start!
     int binary_file_length = 0;
     while (1) 
     {
@@ -215,9 +219,10 @@ void Ota::update(const std::string& filePath)
         if (err != ESP_OK)
         {
             esp_ota_abort(update_handle);
+            break;
         }
         binary_file_length += length;
-        ESP_LOGD(TAG, "Written image length %d", binary_file_length);
+        ESP_LOGI(TAG, "Written image length %d", binary_file_length);
         if(length < buffer.size())
         {
             break;
