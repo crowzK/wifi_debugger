@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "file_server.hpp"
 #include "pyocd_server.hpp"
 #include "log_file.hpp"
+#include "ota.hpp"
 
 extern "C" void app_main(void)
 {
@@ -39,6 +40,8 @@ extern "C" void app_main(void)
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
 
+    auto& ota = Ota::create();
+    ota.update("/sdcard/firmware/WifiDebugger.bin");
     IndexHandler::create();
     WsHandler::create();
     UartService::create();
