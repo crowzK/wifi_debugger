@@ -16,32 +16,22 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef OTA_HPP
-#define OTA_HPP
+#ifndef BIN_UPLOAD_HPP
+#define BIN_UPLOAD_HPP
 
-#include <string>
-#include <vector>
-#include "bin_upload.hpp"
+#include "logger_web.hpp"
+#include "esp_vfs.h"
 
-class Ota
+
+class BinUploadHandler : public UriHandler
 {
 public:
-    static Ota& create();
-
-    //! \brief Firmware update with given file
-    void update(const std::string& filePath);
-
-    //! \brief Search firmware binary files from the SD card
-    std::vector<std::string> searchBins();
+    BinUploadHandler();
+    ~BinUploadHandler() = default;
 
 protected:
-    BinUploadHandler mUploadHandler;
-
-    Ota();
-    ~Ota() = default;
-
-    void printSha256(const uint8_t *image_hash, const char *label) const;
-    bool firmwareBinCheck(uint8_t* binHeader) const;
+    const char* cBasePath;
+    esp_err_t userHandler(httpd_req *req) override;
 };
 
-#endif // OTA_HPP
+#endif // BIN_UPLOAD_HPP

@@ -268,6 +268,7 @@ void Ota::update(const std::string& filePath)
         ESP_LOGE(TAG, "esp_ota_set_boot_partition failed (%s)!", esp_err_to_name(err));
     }
     ESP_LOGI(TAG, "Prepare to restart system!");
+    remove(filePath.c_str());
     esp_restart();
     return ;
 }
