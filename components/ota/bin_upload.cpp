@@ -26,17 +26,23 @@ extern "C"
 #include <sys/param.h>
 #include <sys/unistd.h>
 #include <sys/stat.h>
+#include "esp_system.h"
 #include <vector>
 #include "esp_err.h"
 #include "esp_log.h"
-
 #include "esp_vfs.h"
 #include "esp_http_server.h"
+#include "esp_timer.h"
 #include "file_server.hpp"
 #include "fs_manager.hpp"
 #include "bin_upload.hpp"
 
 static const char *TAG = "bin_upload";
+
+static void rebootTimerCb(void *arg)
+{
+    esp_restart();
+}
 
 BinUploadHandler::BinUploadHandler() :
     UriHandler("/binupload/WifiDebugger.bin", HTTP_POST),
@@ -121,9 +127,17 @@ esp_err_t BinUploadHandler::userHandler(httpd_req *req)
     /* Redirect onto root to see the updated file list */
     httpd_resp_set_status(req, "303 See Other");
     httpd_resp_set_hdr(req, "Location", "/");
-#ifdef CONFIG_EXAMPLE_HTTPD_CONN_CLOSE_HEADER
-    httpd_resp_set_hdr(req, "Connection", "close");
-#endif
     httpd_resp_sendstr(req, "File uploaded successfully");
+
+    const esp_timer_create_args_t oneshot_timer_args = {
+            .callback = &rebootTimerCb,
+            /* argument specified here will be passed to timer callback function */
+            .arg = (void*) nullptr,
+            .name = "one-shot"
+    };
+    esp_timer_handle_t oneshot_timer;
+    ESP_ERROR_CHECK(esp_timer_create(&oneshot_timer_args, &oneshot_timer));
+    ESP_ERROR_CHECK(esp_timer_start_once(oneshot_timer, 1000000));
+    
     return ESP_OK;
 }
