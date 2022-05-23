@@ -40,7 +40,8 @@ extern "C" void app_main(void)
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
 
-    Ota::create();
+    auto& ota = Ota::create();
+    ota.update("/sdcard/firmware/WifiDebugger.bin");
     IndexHandler::create();
     WsHandler::create();
     UartService::create();
