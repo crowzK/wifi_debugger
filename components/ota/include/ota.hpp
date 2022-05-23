@@ -36,6 +36,9 @@ public:
 protected:
     Ota();
     ~Ota() = default;
+
+    void printSha256(const uint8_t *image_hash, const char *label) const;
+    bool firmwareBinCheck(uint8_t* binHeader) const;
 };
 
 #endif // OTA_HPP
