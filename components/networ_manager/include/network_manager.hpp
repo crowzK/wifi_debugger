@@ -31,8 +31,10 @@ public:
 
     bool init();
     bool provision();
+    bool disconnect();
+    bool removeProvision();
 
-protected:
+protected: 
     NetworkManager();
     ~NetworkManager() = default;
 };

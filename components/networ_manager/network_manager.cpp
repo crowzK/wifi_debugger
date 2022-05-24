@@ -32,6 +32,8 @@ static EventGroupHandle_t wifi_event_group;
 #define PROV_TRANSPORT_SOFTAP "softap"
 #define PROV_TRANSPORT_BLE "ble"
 
+static volatile bool mWifiConnect = false;
+
 /* Event handler for catching system events */
 static void event_handler(void *arg, esp_event_base_t event_base,
                           int32_t event_id, void *event_data)
@@ -99,8 +101,11 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
-        ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
-        esp_wifi_connect();
+        if(mWifiConnect)
+        {
+            ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
+            esp_wifi_connect();
+        }
     }
 }
 
@@ -239,6 +244,22 @@ bool NetworkManager::provision()
 
     wifi_prov_mgr_deinit();
     esp_wifi_set_ps(WIFI_PS_NONE);
+    mWifiConnect = true;
+    return true;
+}
+
+bool NetworkManager::disconnect()
+{
+    ESP_LOGI(TAG, "Disconnect WIFI");
+    mWifiConnect = false;
+    esp_wifi_disconnect();
+    return true;
+}
+
+bool NetworkManager::removeProvision()
+{
+    disconnect();
+    wifi_prov_mgr_reset_provisioning();
     return true;
 }
 
