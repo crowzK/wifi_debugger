@@ -27,17 +27,10 @@ Status& Status::create()
 Status::Status() :
     mLed(static_cast<gpio_num_t>(cLedGpio))
 {
-    mLed.on(true);
+    mLed.on(false);
 }
 
-void Status::report(Error err, bool status)
+void Status::on(bool on)
 {
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
-    mStatus.set(err, status);
-}
-
-bool Status::getError(Error err)
-{
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
-    return mStatus.test(err);
+    mLed.on(on);
 }

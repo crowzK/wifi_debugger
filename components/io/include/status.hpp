@@ -20,7 +20,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #define _STATUS_HPP_
 
 #include <stdint.h>
-#include <bitset>
 #include <mutex>
 #include "led.hpp"
 
@@ -28,21 +27,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 class Status
 {
 public:
-    enum Error
-    {
-        eWifiConnect,
-        eSdcard,
-        eSize
-    };
-
     //! \brief Create Status single tone instance.
     static Status& create();
 
-    //! \brief Report Error status
-    void report(Error err, bool status);
-
-    //! \brief Get Error status
-    bool getError(Error err);
+    void on(bool on = true);
 
 protected:
 #if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
@@ -52,7 +40,6 @@ protected:
 #elif CONFIG_WIFI_DEBUGGER_V_0_2
     static constexpr int cLedGpio = 0;
 #endif
-    std::bitset<Error::eSize> mStatus;
     std::recursive_mutex mMutex;
     Led mLed;
 

@@ -16,28 +16,31 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef NETWORK_MAANGER_HPP
-#define NETWORK_MAANGER_HPP
+#ifndef SW_TIMER_HPP
+#define SW_TIMER_HPP
 
+#include "esp_timer.h"
 #include <functional>
-#include <mutex>
-#include "driver/gpio.h"
-#include "button.hpp"
 
-class NetworkManager
+class SWTimer
 {
 public:
-    static NetworkManager& create();
-
-    bool init();
-    bool provision();
-    bool disconnect();
-    bool removeProvision();
-
-protected: 
-    Button mPairBut;
-    NetworkManager();
-    ~NetworkManager() = default;
+    enum class Mode
+    {
+        ePeriodic,
+        eOneshot
+    };
+    SWTimer();
+    ~SWTimer();
+    void start(Mode mode, uint32_t periodMs, std::function<void()>&& cb);
+    void stop();
+protected:
+    const esp_timer_create_args_t cTimerArg;
+    esp_timer_handle_t mTimerHandle;
+    std::function<void()> mCallback;
+    
+    static void cb(void* arg);
 };
 
-#endif // NETWORK_MAANGER_HPP
+
+#endif //SW_TIMER_HPP

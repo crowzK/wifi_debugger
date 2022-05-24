@@ -22,6 +22,7 @@
 #include <wifi_provisioning/manager.h>
 #include <wifi_provisioning/scheme_ble.h>
 #include "network_manager.hpp"
+#include "esp_system.h"
 
 static const char *TAG = "NetworkManager";
 
@@ -83,6 +84,8 @@ static void event_handler(void *arg, esp_event_base_t event_base,
         case WIFI_PROV_END:
             /* De-initialize manager once provisioning is finished */
             wifi_prov_mgr_deinit();
+            /* Signal main application to continue execution */
+            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
             break;
         default:
             break;
@@ -96,8 +99,6 @@ static void event_handler(void *arg, esp_event_base_t event_base,
     {
         ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
         ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
-        /* Signal main application to continue execution */
-        xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
     }
     else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
     {
@@ -174,6 +175,7 @@ bool NetworkManager::provision()
         /* We don't need the manager as device is already provisioned,
          * so let's release it's resources */
         wifi_prov_mgr_deinit();
+        mWifiConnect = true;
         return false;
     }
 
@@ -241,8 +243,6 @@ bool NetworkManager::provision()
     wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
 
     xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, true, false, portMAX_DELAY);
-
-    wifi_prov_mgr_deinit();
     esp_wifi_set_ps(WIFI_PS_NONE);
     mWifiConnect = true;
     return true;
@@ -303,6 +303,7 @@ bool NetworkManager::init()
     }
 
     esp_wifi_set_ps(WIFI_PS_NONE);
+    mPairBut.enable();
     return true;
 }
 
@@ -312,6 +313,15 @@ NetworkManager &NetworkManager::create()
     return manager;
 }
 
-NetworkManager::NetworkManager()
+NetworkManager::NetworkManager() :
+    mPairBut(gpio_num_t::GPIO_NUM_9, [this](Button::Event evt)
+    {
+        if(evt == Button::Event::eLongPress)
+        {
+            ESP_LOGI(TAG, "Remove provision info");
+            removeProvision();
+            esp_restart();
+        }
+    })
 {
 }

@@ -17,8 +17,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 #include "button.hpp"
+#include <esp_log.h>
 
-Button::Button(gpio_num_t gpio, std::function<void(bool evt)>&& callback) :
+Button::Button(gpio_num_t gpio, std::function<void(Event evt)>&& callback) :
     cGpio(gpio),
     mEnable(false),
     mCb(callback)
@@ -33,6 +34,54 @@ Button::Button(gpio_num_t gpio, std::function<void(bool evt)>&& callback) :
 
 Button::~Button()
 {
+    enable(false);
+}
 
+void Button::enable(bool en)
+{
+    if(mEnable == en)
+    {
+        return;
+    }
+
+    mEnable = en;
+    if(cGpio >= GPIO_NUM_MAX)
+    {
+        return;
+    }
+    if(mEnable)
+    {
+        mTimer.start(SWTimer::Mode::ePeriodic, 100, [this]
+        {
+            bool press = not gpio_get_level(cGpio);
+            if(not mCb)
+            {
+                mLastStatus = press;
+                return;
+            }
+            if(press)
+            {
+                if(mPressedTimeMs == 0)
+                {
+                    mCb(Event::ePress);
+                }
+                mPressedTimeMs += 100;
+                if(mPressedTimeMs > 3000)
+                {
+                    mCb(Event::eLongPress);
+                }
+            }
+            else if(mLastStatus)
+            {
+                mPressedTimeMs = 0;
+                mCb(Event::eRelease);
+            }
+            mLastStatus = press;
+        });
+    }
+    else
+    {
+        mTimer.stop();
+    }
 }
 

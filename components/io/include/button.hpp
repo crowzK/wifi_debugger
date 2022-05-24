@@ -22,11 +22,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <functional>
 #include <mutex>
 #include "driver/gpio.h"
+#include "sw_timer.hpp"
 
 class Button
 {
 public:
-    Button(gpio_num_t gpio, std::function<void(bool evt)>&& callback);
+    enum class Event
+    {
+        ePress,
+        eLongPress,
+        eRelease,
+    };
+    Button(gpio_num_t gpio, std::function<void(Event evt)>&& callback);
     ~Button();
     void enable(bool en = true);
 
@@ -34,7 +41,10 @@ protected:
     std::recursive_mutex mMutex;
     const gpio_num_t cGpio;
     bool mEnable;
-    std::function<void(bool evt)> mCb;
+    bool mLastStatus;
+    SWTimer mTimer;
+    uint32_t mPressedTimeMs;
+    std::function<void(Event evt)> mCb;
 };
 
 #endif // BUTTON_HPP

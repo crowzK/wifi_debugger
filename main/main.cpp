@@ -29,10 +29,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "log_file.hpp"
 #include "ota.hpp"
 #include "network_manager.hpp"
+#include "status.hpp"
 
 extern "C" void app_main(void)
 {
+    Status::create();
     NetworkManager::create().init();
+    Status::create().on(true);
     // time zone setting
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
