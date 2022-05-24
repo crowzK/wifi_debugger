@@ -1,6 +1,40 @@
-#ifndef PROVISIONING_MANAGER_HPP
-#define PROVISIONING_MANAGER_HPP
+/*
+Copyright (C) Yudoc Kim <craven@crowz.kr>
+ 
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+ 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+*/
 
-void startProvisioning(void);
+#ifndef NETWORK_MAANGER_HPP
+#define NETWORK_MAANGER_HPP
 
-#endif // PROVISIONING_MANAGER_HPP
+#include <functional>
+#include <mutex>
+#include "driver/gpio.h"
+#include "task.hpp"
+
+class NetworkManager
+{
+public:
+    static NetworkManager& create();
+
+    bool init();
+    bool provision();
+
+protected:
+    NetworkManager();
+    ~NetworkManager() = default;
+};
+
+#endif // NETWORK_MAANGER_HPP

@@ -28,11 +28,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "pyocd_server.hpp"
 #include "log_file.hpp"
 #include "ota.hpp"
+#include "network_manager.hpp"
 
 extern "C" void app_main(void)
 {
-    startProvisioning();
-    esp_wifi_set_ps(WIFI_PS_NONE);
+    NetworkManager::create().init();
     // time zone setting
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
