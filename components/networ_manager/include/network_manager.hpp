@@ -34,7 +34,17 @@ public:
     bool disconnect();
     bool removeProvision();
 
-protected: 
+protected:
+#if CONFIG_M5STACK_CORE
+    static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_MAX;
+#elif CONFIG_TTGO_T1
+    static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_MAX;
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
+    static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_21;
+#elif CONFIG_WIFI_DEBUGGER_V_0_2
+    static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_9;
+#endif
+
     Button mPairBut;
     NetworkManager();
     ~NetworkManager() = default;

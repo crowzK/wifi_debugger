@@ -314,7 +314,7 @@ NetworkManager &NetworkManager::create()
 }
 
 NetworkManager::NetworkManager() :
-    mPairBut(gpio_num_t::GPIO_NUM_9, [this](Button::Event evt)
+    mPairBut(cParingPin, [this](Button::Event evt)
     {
         if(evt == Button::Event::eLongPress)
         {
@@ -324,4 +324,9 @@ NetworkManager::NetworkManager() :
         }
     })
 {
+#if CONFIG_WIFI_DEBUGGER_V_0_1
+    gpio_reset_pin(gpio_num_t::GPIO_NUM_20);
+    gpio_set_direction(gpio_num_t::GPIO_NUM_20, GPIO_MODE_OUTPUT);
+    gpio_set_level(gpio_num_t::GPIO_NUM_20, 0);
+#endif
 }

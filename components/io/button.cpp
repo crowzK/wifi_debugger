@@ -29,6 +29,7 @@ Button::Button(gpio_num_t gpio, std::function<void(Event evt)>&& callback) :
         gpio_reset_pin(cGpio);
         /* Set the GPIO as a input */
         gpio_set_direction(cGpio, GPIO_MODE_INPUT);
+        gpio_set_pull_mode(cGpio, gpio_pull_mode_t::GPIO_PULLUP_ONLY);
     }
 }
 
