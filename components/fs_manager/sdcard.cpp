@@ -36,7 +36,8 @@ static const char *TAG = "sdcard";
 
 SdCard::SdCard(const char* mountPoint) :
     cMountPoint(mountPoint),
-    pSdcard(nullptr)
+    pSdcard(nullptr),
+    mInit(false)
 {
     esp_err_t ret;
     esp_vfs_fat_sdmmc_mount_config_t mount_config = {
@@ -90,10 +91,16 @@ SdCard::SdCard(const char* mountPoint) :
         return;
     }
     sdmmc_card_print_info(stdout, (sdmmc_card_t*)pSdcard);
+    mInit = true;
 }
 
 SdCard::~SdCard()
 {
     esp_vfs_fat_sdcard_unmount(cMountPoint, (sdmmc_card_t*)pSdcard);
     spi_bus_free((spi_host_device_t)cSpiPort);
+}
+
+bool SdCard::isInit() const
+{
+    return mInit;
 }

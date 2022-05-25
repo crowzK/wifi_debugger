@@ -36,12 +36,7 @@ public:
         return cMountPoint;
     }
 
-    bool isMount()
-    {
-        std::lock_guard<std::recursive_mutex> lock(mMutex);
-        return mpSdcard != nullptr;        
-    }
-
+    bool isMount();
 protected:
     static const char* cMountPoint;
     std::recursive_mutex mMutex;
