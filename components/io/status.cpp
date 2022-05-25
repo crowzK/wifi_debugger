@@ -27,7 +27,7 @@ Status& Status::create()
 Status::Status() :
     mLed(static_cast<gpio_num_t>(cLedGpio))
 {
-    mLed.on(false);
+    mLed.blink(200);
 }
 
 void Status::on(bool on)
