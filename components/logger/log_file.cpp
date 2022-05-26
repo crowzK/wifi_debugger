@@ -65,11 +65,6 @@ void LogFile::init()
     if(mFsManager.mount())
     {
         pFile = createFile();
-        Status::create().report(Status::Error::eSdcard, true);
-    }
-    else
-    {
-        Status::create().report(Status::Error::eSdcard, false);
     }
 }
 

@@ -16,22 +16,21 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef LED_HPP
-#define LED_HPP
+#include "status.hpp"
 
-#include "driver/gpio.h"
-
-class Led
+Status& Status::create()
 {
-public:
-    Led(gpio_num_t gpio);
-    ~Led();
-    void on(bool on = true);
-    void toggle(void);
+    static Status status;
+    return status;
+}
 
-protected:
-    const gpio_num_t cGpio;
-    bool mEnable;
-};
+Status::Status() :
+    mLed(static_cast<gpio_num_t>(cLedGpio))
+{
+    mLed.blink(200);
+}
 
-#endif // LED_HPP
+void Status::on(bool on)
+{
+    mLed.on(on);
+}

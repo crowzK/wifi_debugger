@@ -38,11 +38,24 @@ Led::~Led()
 
 void Led::on(bool on)
 {
+    mTimer.stop();
     mEnable = on;
     if(cGpio < GPIO_NUM_MAX)
     {
         gpio_set_level(cGpio, mEnable);
     }
+}
+
+void Led::blink(uint32_t periodms)
+{
+    mTimer.start(SWTimer::Mode::ePeriodic, periodms, [this]
+    {
+        mEnable = not mEnable;
+        if(cGpio < GPIO_NUM_MAX)
+        {
+            gpio_set_level(cGpio, mEnable);
+        }
+    });
 }
 
 void Led::toggle(void)

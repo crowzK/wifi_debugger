@@ -16,34 +16,25 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef FILE_SYSTEM_MANAGER_HPP
-#define FILE_SYSTEM_MANAGER_HPP
+#ifndef LED_HPP
+#define LED_HPP
 
-#include <memory>
-#include <mutex>
+#include "driver/gpio.h"
+#include "sw_timer.hpp"
 
-class SdCard;
-
-class FsManager
+class Led
 {
 public:
-    static FsManager& create();
+    Led(gpio_num_t gpio);
+    ~Led();
+    void on(bool on = true);
+    void blink(uint32_t periodms);
+    void toggle(void);
 
-    bool mount();
-    bool umount();
-    const char* getMountPoint()
-    {
-        return cMountPoint;
-    }
-
-    bool isMount();
 protected:
-    static const char* cMountPoint;
-    std::recursive_mutex mMutex;
-    std::unique_ptr<SdCard> mpSdcard;
-
-    FsManager();
-    ~FsManager();
+    const gpio_num_t cGpio;
+    bool mEnable;
+    SWTimer mTimer;
 };
 
-#endif // FILE_SYSTEM_MANAGER_HPP
+#endif // LED_HPP

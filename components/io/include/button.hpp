@@ -16,48 +16,35 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef _STATUS_HPP_
-#define _STATUS_HPP_
+#ifndef BUTTON_HPP
+#define BUTTON_HPP
 
-#include <stdint.h>
-#include <bitset>
+#include <functional>
 #include <mutex>
-#include "led.hpp"
+#include "driver/gpio.h"
+#include "sw_timer.hpp"
 
-//! To indicate Debugger status
-class Status
+class Button
 {
 public:
-    enum Error
+    enum class Event
     {
-        eWifiConnect,
-        eSdcard,
-        eSize
+        ePress,
+        eLongPress,
+        eRelease,
     };
-
-    //! \brief Create Status single tone instance.
-    static Status& create();
-
-    //! \brief Report Error status
-    void report(Error err, bool status);
-
-    //! \brief Get Error status
-    bool getError(Error err);
+    Button(gpio_num_t gpio, std::function<void(Event evt)>&& callback);
+    ~Button();
+    void enable(bool en = true);
 
 protected:
-#if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
-    static constexpr int cLedGpio = 22;
-#elif CONFIG_WIFI_DEBUGGER_V_0_1
-    static constexpr int cLedGpio = GPIO_NUM_MAX;
-#elif CONFIG_WIFI_DEBUGGER_V_0_2
-    static constexpr int cLedGpio = 0;
-#endif
-    std::bitset<Error::eSize> mStatus;
     std::recursive_mutex mMutex;
-    Led mLed;
-
-    Status();
-    ~Status() = default;
+    const gpio_num_t cGpio;
+    bool mEnable;
+    bool mLastStatus;
+    SWTimer mTimer;
+    uint32_t mPressedTimeMs;
+    std::function<void(Event evt)> mCb;
 };
 
-#endif //_STATUS_HPP_
+#endif // BUTTON_HPP

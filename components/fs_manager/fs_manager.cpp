@@ -60,3 +60,9 @@ bool FsManager::umount()
     //}
     return true;
 }
+
+bool FsManager::isMount()
+{
+    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    return mpSdcard and mpSdcard->isInit();        
+}

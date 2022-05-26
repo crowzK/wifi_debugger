@@ -16,28 +16,31 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "status.hpp"
+#ifndef SW_TIMER_HPP
+#define SW_TIMER_HPP
 
-Status& Status::create()
-{
-    static Status status;
-    return status;
-}
+#include "esp_timer.h"
+#include <functional>
 
-Status::Status() :
-    mLed(static_cast<gpio_num_t>(cLedGpio))
+class SWTimer
 {
-    mLed.on(true);
-}
+public:
+    enum class Mode
+    {
+        ePeriodic,
+        eOneshot
+    };
+    SWTimer();
+    ~SWTimer();
+    void start(Mode mode, uint32_t periodMs, std::function<void()>&& cb);
+    void stop();
+protected:
+    const esp_timer_create_args_t cTimerArg;
+    esp_timer_handle_t mTimerHandle;
+    std::function<void()> mCallback;
+    
+    static void cb(void* arg);
+};
 
-void Status::report(Error err, bool status)
-{
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
-    mStatus.set(err, status);
-}
 
-bool Status::getError(Error err)
-{
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
-    return mStatus.test(err);
-}
+#endif //SW_TIMER_HPP

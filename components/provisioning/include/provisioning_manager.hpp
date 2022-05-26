@@ -1,6 +1,0 @@
-#ifndef PROVISIONING_MANAGER_HPP
-#define PROVISIONING_MANAGER_HPP
-
-void startProvisioning(void);
-
-#endif // PROVISIONING_MANAGER_HPP

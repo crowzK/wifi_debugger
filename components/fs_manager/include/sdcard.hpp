@@ -29,7 +29,7 @@ class SdCard
 public:
     SdCard(const char* mountPoint);
     ~SdCard();
-
+    bool isInit() const;
 protected:
     const char* cMountPoint;
 #if CONFIG_M5STACK_CORE
@@ -58,6 +58,7 @@ protected:
     static constexpr int cSpiPort = 1;
 #endif
     void* pSdcard;
+    bool mInit;
 };
 
 #endif

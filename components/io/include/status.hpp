@@ -16,34 +16,35 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef FILE_SYSTEM_MANAGER_HPP
-#define FILE_SYSTEM_MANAGER_HPP
+#ifndef _STATUS_HPP_
+#define _STATUS_HPP_
 
-#include <memory>
+#include <stdint.h>
 #include <mutex>
+#include "led.hpp"
 
-class SdCard;
-
-class FsManager
+//! To indicate Debugger status
+class Status
 {
 public:
-    static FsManager& create();
+    //! \brief Create Status single tone instance.
+    static Status& create();
 
-    bool mount();
-    bool umount();
-    const char* getMountPoint()
-    {
-        return cMountPoint;
-    }
+    void on(bool on = true);
 
-    bool isMount();
 protected:
-    static const char* cMountPoint;
+#if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
+    static constexpr int cLedGpio = 22;
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
+    static constexpr int cLedGpio = GPIO_NUM_MAX;
+#elif CONFIG_WIFI_DEBUGGER_V_0_2
+    static constexpr int cLedGpio = 0;
+#endif
     std::recursive_mutex mMutex;
-    std::unique_ptr<SdCard> mpSdcard;
+    Led mLed;
 
-    FsManager();
-    ~FsManager();
+    Status();
+    ~Status() = default;
 };
 
-#endif // FILE_SYSTEM_MANAGER_HPP
+#endif //_STATUS_HPP_

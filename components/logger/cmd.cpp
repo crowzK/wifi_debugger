@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <esp_log.h>
 #include <sstream>
 #include "status.hpp"
+#include "fs_manager.hpp"
 
 Cmd::Cmd(Type type, SubCmd subCmd) :
     cType(type),
@@ -55,7 +56,7 @@ std::vector<uint8_t> Cmd::getCmd()
 UartSetting::UartSetting(int baudrate, int port) :
     Cmd(Type::eServerToClient, SubCmd::eUartSetting)
 {
-    std::string uart = Status::create().getError(Status::Error::eSdcard) ? "SD Error" : "SD Okay";
+    std::string uart = FsManager::create().isMount() ? "SD Okay": "SD Error";
     std::ostringstream cmd;
     cmd << baudrate << " " << port << " " << uart;
     mCmd = cmd.str();
