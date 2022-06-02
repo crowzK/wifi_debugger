@@ -30,9 +30,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "ota.hpp"
 #include "network_manager.hpp"
 #include "status.hpp"
+#include "console.hpp"
 
 extern "C" void app_main(void)
 {
+    Console::create();
     Status::create();
     NetworkManager::create().init();
     Status::create().on(true);
