@@ -206,61 +206,53 @@ NetworkManager::NetworkManager() :
 //-------------------------------------------------------------------
 // WifiCmd
 //-------------------------------------------------------------------
-WifiCmd::JoinArgs WifiCmd::mJoinArgs;
 
 WifiCmd::WifiCmd() :
-    cCmd{.command = "join", .help = "Join WiFi AP as a station", .hint = nullptr, .func = connect, .argtable = &mJoinArgs}
+    Cmd("join")
 {
-    mJoinArgs.timeout = arg_int0(NULL, "timeout", "<t>", "Connection timeout, ms");
-    mJoinArgs.ssid = arg_str1(NULL, NULL, "<ssid>", "SSID of AP");
-    mJoinArgs.password = arg_str0(NULL, NULL, "<pass>", "PSK of AP");
-    mJoinArgs.end = arg_end(2);
-
-    esp_console_cmd_register(&cCmd);
 }
 
-WifiCmd::~WifiCmd()
+bool WifiCmd::excute(const std::vector<std::string>& args)
 {
-    //esp_console_cmd_register(&cCmd);
-}
-
-int WifiCmd::connect(int argc, char** argv)
-{
-    int nerrors = arg_parse(argc, argv, (void **) &mJoinArgs);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, mJoinArgs.end, argv[0]);
-        return 1;
-    }
-    ESP_LOGI(__func__, "Connecting to '%s'",
-             mJoinArgs.ssid->sval[0]);
-
-    /* set default value*/
-    if (mJoinArgs.timeout->count == 0) {
-        mJoinArgs.timeout->ival[0] = 10000;
+    if(args.size() < 3)
+    {
+        printf("%s\n", help().c_str());
+        return false;
     }
 
-    bool connected = NetworkManager::create().join(mJoinArgs.ssid->sval[0],
-                               mJoinArgs.password->sval[0],
-                               mJoinArgs.timeout->ival[0]);
+    ESP_LOGI(__func__, "Connecting to '%s'", args.at(1).c_str());
+    constexpr int timeOut = 10000;
+
+    bool connected = NetworkManager::create().join(args.at(1).c_str(),
+                               args.at(2).c_str(),
+                               timeOut);
     if (!connected) {
         ESP_LOGW(__func__, "Connection timed out");
-        return 1;
+        return false;
     }
     ESP_LOGI(__func__, "Connected");
-    return 0;
+    return true;
+}
+
+std::string WifiCmd::help()
+{
+    return std::string("join <ssid> <password>");
 }
 
 //-------------------------------------------------------------------
 // WifiInfoCmd
 //-------------------------------------------------------------------
 WifiInfoCmd::WifiInfoCmd() :
-    cCmd{.command = "info", .help = "print system information", .hint = nullptr, .func = info, .argtable = nullptr}
-
+    Cmd("info")
 {
-    esp_console_cmd_register(&cCmd);
 }
 
-int WifiInfoCmd::info(int argc, char** argv)
+std::string WifiInfoCmd::help()
+{
+    return std::string("it will print wifi ap info");
+}
+
+bool WifiInfoCmd::excute(const std::vector<std::string>& args)
 {
     wifi_config_t wifi_config;
     esp_wifi_set_storage(WIFI_STORAGE_FLASH);
@@ -268,5 +260,5 @@ int WifiInfoCmd::info(int argc, char** argv)
 
     printf("\r\nSSID:%s\r\n", wifi_config.sta.ssid);
     printf("PASSWORD:%s\r\n", wifi_config.sta.password);
-    return 0;
+    return true;
 }

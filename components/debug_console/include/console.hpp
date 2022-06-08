@@ -19,16 +19,51 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #ifndef CONSOLE_HPP
 #define CONSOLE_HPP
 
-#include "esp_console.h"
+#include <list>
+#include <vector>
+#include <mutex>
+#include "task.hpp"
 
-class Console
+class Cmd
+{
+public:
+    const std::string cCmd;
+
+    Cmd(std::string&& cmd);
+    virtual ~Cmd();
+    virtual std::string help() = 0;
+    virtual bool excute(const std::vector<std::string>& args) = 0;
+};
+
+class Help : protected Cmd
+{
+public:
+    Help();
+    ~Help() = default;
+    std::string help();
+    bool excute(const std::vector<std::string>& args);
+};
+
+class Console : protected Task
 {
 public:
     static Console& create();
+    void help();
 
 protected:
+    std::recursive_mutex mMutex;
+    friend class Cmd;
+    std::list<Cmd*> mCmdList;
+    std::unique_ptr<Help> mpHelp;
+
     Console();
     ~Console() = default;
+    
+    void init();
+    void add(Cmd& cmd);
+    void remove(Cmd& cmd);
+    std::vector<std::string> split(const std::string& cmd);
+    void task() override;
 };
 
 #endif // CONSOLE_HPP

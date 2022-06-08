@@ -18,6 +18,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include "status.hpp"
 
+extern "C" void ledOn(void)
+{
+    Status::create().on(true);
+}
+
 Status& Status::create()
 {
     static Status status;

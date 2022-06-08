@@ -27,35 +27,27 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 
-class WifiCmd
+class WifiCmd : protected Cmd
 {
 public:
     WifiCmd();
-    ~WifiCmd();
+    ~WifiCmd() = default;
 
 private:
-    struct JoinArgs
-    {
-        struct arg_int *timeout;
-        struct arg_str *ssid;
-        struct arg_str *password;
-        struct arg_end *end;
-    };
-    
-    const esp_console_cmd_t cCmd;
-    static JoinArgs mJoinArgs;
-    static int connect(int argc, char** argv);
+    bool excute(const std::vector<std::string>& args) override;
+    std::string help() override;
 };
 
-class WifiInfoCmd
+class WifiInfoCmd : protected Cmd
 {
 public:
     WifiInfoCmd();
     ~WifiInfoCmd() = default;
 
 protected:
-    const esp_console_cmd_t cCmd;
-    static int info(int argc, char** argv);
+   // const esp_console_cmd_t cCmd;
+    bool excute(const std::vector<std::string>& args) override;
+    std::string help() override;
 };
 
 class NetworkManager
