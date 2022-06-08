@@ -17,6 +17,7 @@
 #include "esp_vfs_dev.h"
 #include "esp_vfs_usb_serial_jtag.h"
 #include "driver/usb_serial_jtag.h"
+#include "log_console_out.hpp"
 
 #include "console.hpp"
 //-------------------------------------------------------------------
@@ -107,7 +108,7 @@ void Console::help()
     {
         printf("%10s | %s\n", pCmd->cCmd.c_str(), pCmd->help().c_str());
     }
-    printf("\n\n---------------------------------\n");
+    printf("---------------------------------\n");
 }
 
 void Console::add(Cmd& cmd)
@@ -155,6 +156,7 @@ void Console::task()
 {
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();
+    mpUartConsole = std::make_unique<LogConsoleOut>();
     help();
     std::string cmd;
     while(mRun)
