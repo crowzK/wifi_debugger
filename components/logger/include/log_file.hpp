@@ -34,7 +34,7 @@ public:
     const std::string getFilePath();
 
 protected:
-    std::recursive_mutex mMutex;
+    std::recursive_timed_mutex mMutex;
     FsManager& mFsManager;
     const char* cMountPoint;
 
