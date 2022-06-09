@@ -29,6 +29,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "network_manager.hpp"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "status.hpp"
 
 static const char *TAG = "NetworkManager";
 
@@ -56,10 +57,12 @@ void NetworkManager::eventHandler(esp_event_base_t event_base, int32_t event_id,
         case WIFI_EVENT_STA_START:
             ESP_LOGI(TAG, "Esp wifi start");
             esp_wifi_connect();
+            Status::create().blink();
             break;
         case WIFI_EVENT_STA_STOP:
             ESP_LOGI(TAG, "Esp wifi stop");
             esp_wifi_disconnect();
+            Status::create().blink();
             break;
         default:
             break;
@@ -74,6 +77,7 @@ void NetworkManager::eventHandler(esp_event_base_t event_base, int32_t event_id,
             ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
             ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
             xEventGroupSetBits(mWifiEventGroup, WIFI_CONNECTED_EVENT);
+            Status::create().on(true);
             break;
         }
         default:
@@ -87,6 +91,7 @@ void NetworkManager::eventHandler(esp_event_base_t event_base, int32_t event_id,
         case WIFI_EVENT_STA_DISCONNECTED:
             ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
             esp_wifi_connect();
+            Status::create().blink();
             break;
         default:
             break;

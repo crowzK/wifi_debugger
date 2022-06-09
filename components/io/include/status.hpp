@@ -31,6 +31,7 @@ public:
     static Status& create();
 
     void on(bool on = true);
+    void blink();
 
 protected:
 #if (CONFIG_M5STACK_CORE | CONFIG_TTGO_T1)
