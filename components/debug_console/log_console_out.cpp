@@ -50,6 +50,10 @@ bool LogConsoleOut::excute(const std::vector<std::string>& args)
                 printf("escape cmd enter\n");
                 break;
             }
+            if(c == '\n')
+            {
+                c = '\r';
+            }
             std::vector<uint8_t> tx;
             tx.push_back(c);
             DebugMsgTx::create().write(tx);
