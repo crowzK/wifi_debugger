@@ -68,11 +68,10 @@ Console::Console() :
 {
     std::lock_guard<std::recursive_mutex> lock(mMutex);
 
-    init();
     start();
 }
 
-void Console::init()
+bool Console::init()
 {
     /* Disable buffering on stdin */
     setvbuf(stdin, NULL, _IONBF, 0);
@@ -81,6 +80,18 @@ void Console::init()
     esp_vfs_dev_usb_serial_jtag_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
     /* Move the caret to the beginning of the next line on '\n' */
     esp_vfs_dev_usb_serial_jtag_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
+
+    // waiting usb-serial cable attached
+    while(1)
+    {
+        char c;
+        int ret = read(fileno(stdin), &c, 1);
+        if(ret > 0)
+        {
+            break;
+        }
+        vTaskDelay(100);
+    }
 
     /* Enable non-blocking mode on stdin and stdout */
     fcntl(fileno(stdout), F_SETFL, 0);
@@ -97,6 +108,7 @@ void Console::init()
 
     /* Tell vfs to use usb-serial-jtag driver */
     esp_vfs_usb_serial_jtag_use_driver();
+    return true;
 }
 
 void Console::help()
@@ -154,6 +166,8 @@ std::vector<std::string> Console::split(const std::string& cmd)
 
 void Console::task()
 {
+    init();
+
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();
     mpUartConsole = std::make_unique<LogConsoleOut>();
@@ -162,7 +176,7 @@ void Console::task()
     while(mRun)
     {
         char c;
-        if(read(stdin_fileno, &c, 1))
+        if(read(stdin_fileno, &c, 1) > 0)
         {
             if(c == '\r')
             {
@@ -201,6 +215,10 @@ void Console::task()
                 putchar(c);
                 fflush(stdout);
             }
+        }
+        else
+        {
+            vTaskDelay(100);
         }
     }
 };

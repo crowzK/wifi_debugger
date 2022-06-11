@@ -62,7 +62,7 @@ protected:
     Console();
     ~Console() = default;
     
-    void init();
+    bool init();
     void add(Cmd& cmd);
     void remove(Cmd& cmd);
     std::vector<std::string> split(const std::string& cmd);
