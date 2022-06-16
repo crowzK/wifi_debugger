@@ -262,8 +262,14 @@ bool WifiInfoCmd::excute(const std::vector<std::string>& args)
     wifi_config_t wifi_config;
     esp_wifi_set_storage(WIFI_STORAGE_FLASH);
     esp_wifi_get_config(WIFI_IF_STA, &wifi_config);
+    tcpip_adapter_ip_info_t ipInfo;
+            
+    // IP address.
+    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ipInfo);
 
     printf("\r\nSSID:%s\r\n", wifi_config.sta.ssid);
     printf("PASSWORD:%s\r\n", wifi_config.sta.password);
+    printf("IP: " IPSTR "\n", IP2STR(&ipInfo.ip));
+    printf("GW: " IPSTR "\n", IP2STR(&ipInfo.gw));
     return true;
 }
