@@ -30,12 +30,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "ota.hpp"
 #include "network_manager.hpp"
 #include "status.hpp"
+#include "console.hpp"
 
 extern "C" void app_main(void)
 {
     Status::create();
+    Console::create();
     NetworkManager::create().init();
-    Status::create().on(true);
+
+    UartService::create();
+    auto& ota = Ota::create();
+    ota.update("/sdcard/firmware/WifiDebugger.bin");
+
     // time zone setting
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, "pool.ntp.org");
@@ -43,11 +49,8 @@ extern "C" void app_main(void)
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
 
-    auto& ota = Ota::create();
-    ota.update("/sdcard/firmware/WifiDebugger.bin");
     IndexHandler::create();
     WsHandler::create();
-    UartService::create();
     PyOcdServer::create();
     FileServerHandler::create();
     LogFile::create().init();

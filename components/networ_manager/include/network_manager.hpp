@@ -23,6 +23,32 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <mutex>
 #include "driver/gpio.h"
 #include "button.hpp"
+#include "console.hpp"
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
+
+class WifiCmd : protected Cmd
+{
+public:
+    WifiCmd();
+    ~WifiCmd() = default;
+
+private:
+    bool excute(const std::vector<std::string>& args) override;
+    std::string help() override;
+};
+
+class WifiInfoCmd : protected Cmd
+{
+public:
+    WifiInfoCmd();
+    ~WifiInfoCmd() = default;
+
+protected:
+   // const esp_console_cmd_t cCmd;
+    bool excute(const std::vector<std::string>& args) override;
+    std::string help() override;
+};
 
 class NetworkManager
 {
@@ -30,11 +56,12 @@ public:
     static NetworkManager& create();
 
     bool init();
-    bool provision();
-    bool disconnect();
     bool removeProvision();
+    bool join(const char *ssid, const char *pass, int timeout_ms);
 
 protected:
+    std::recursive_timed_mutex mMutex;
+
 #if CONFIG_M5STACK_CORE
     static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_MAX;
 #elif CONFIG_TTGO_T1
@@ -46,8 +73,15 @@ protected:
 #endif
 
     Button mPairBut;
+    WifiCmd mWifiCmd;
+    WifiInfoCmd mWifiInfo;
+    static constexpr int WIFI_CONNECTED_EVENT = BIT0;
+    EventGroupHandle_t mWifiEventGroup;
+
     NetworkManager();
     ~NetworkManager() = default;
+    static void wifiEventHandler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+    void eventHandler(esp_event_base_t event_base, int32_t event_id, void *event_data);
 };
 
 #endif // NETWORK_MAANGER_HPP

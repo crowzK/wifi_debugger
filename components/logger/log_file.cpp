@@ -43,7 +43,7 @@ LogFile::LogFile() :
     cMountPoint(mFsManager.getMountPoint()),
     pFile(nullptr)
 {
-    Status::create();
+
 }
 
 LogFile::~LogFile()
@@ -56,12 +56,12 @@ LogFile::~LogFile()
 
 void LogFile::init()
 {
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
-
     while(sntp_getreachability(0) == 0)
     {
         vTaskDelay(100);
     }
+
+    std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
     if(mFsManager.mount())
     {
         pFile = createFile();
@@ -70,13 +70,13 @@ void LogFile::init()
 
 const std::string LogFile::getFilePath()
 {
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
     return mFilePath;
 }
 
 FILE* LogFile::createFile()
 {
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
 
     struct timeval tv_now;
     gettimeofday(&tv_now, NULL);
@@ -133,15 +133,23 @@ FILE* LogFile::createFile()
 
 bool LogFile::write(const char* msg, uint32_t length)
 {
-    std::lock_guard<std::recursive_mutex> lock(mMutex);
+    using namespace std::chrono_literals;
+
+    if(not mMutex.try_lock_for(100ms))
+    {
+        return true;
+    }
+
     if(pFile == nullptr)
     {
+        mMutex.unlock();
         return true;
     }
     
     fwrite(msg, 1, length, pFile);
     fflush(pFile);
     fsync(fileno(pFile));
+    mMutex.unlock();
     return true;
 }
 

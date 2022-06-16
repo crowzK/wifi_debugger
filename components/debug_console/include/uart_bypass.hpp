@@ -16,31 +16,27 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "status.hpp"
+#ifndef UART_BYPASS_HPP
+#define UART_BYPASS_HPP
 
-extern "C" void ledOn(void)
-{
-    Status::create().on(true);
-}
+#include <stdio.h>
+#include <mutex>
+#include <string>
+#include "uart.hpp"
+#include "console.hpp"
 
-Status& Status::create()
-{
-    static Status status;
-    return status;
-}
 
-Status::Status() :
-    mLed(static_cast<gpio_num_t>(cLedGpio))
+//! To by pass uart debug message to the USB CDC
+class UartByPass : public Client, protected Cmd
 {
-    blink();
-}
+public:
+    UartByPass();
+    ~UartByPass() = default;
 
-void Status::on(bool on)
-{
-    mLed.on(on);
-}
+protected:
+    bool write(const std::vector<uint8_t>& msg) override;
+    std::string help();
+    bool excute(const std::vector<std::string>& args);
+};
 
-void Status::blink()
-{
-    mLed.blink(200);
-}
+#endif

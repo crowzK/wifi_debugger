@@ -22,7 +22,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <vector>
 #include <thread>
 #include <atomic>
-#include "blocking_queue.hpp"
 #include "debug_msg_handler.hpp"
 #include "task.hpp"
 

@@ -1,270 +1,116 @@
-/* Wi-Fi Provisioning Manager Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+Copyright (C) Yudoc Kim <craven@crowz.kr>
+ 
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+ 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 #include <stdio.h>
+#include <stdio_ext.h>
 #include <string.h>
-
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
-#include <freertos/event_groups.h>
-
-#include <esp_log.h>
-#include <esp_wifi.h>
-#include <esp_event.h>
-#include <nvs_flash.h>
-
-#include <wifi_provisioning/manager.h>
-#include <wifi_provisioning/scheme_ble.h>
-#include "network_manager.hpp"
+#include "esp_log.h"
+#include "esp_console.h"
+#include "argtable3/argtable3.h"
+#include "esp_wifi.h"
+#include "esp_netif.h"
+#include "esp_event.h"
 #include "esp_system.h"
+#include "network_manager.hpp"
+#include "nvs.h"
+#include "nvs_flash.h"
+#include "status.hpp"
 
 static const char *TAG = "NetworkManager";
 
-/* Signal Wi-Fi events on this event-group */
-const int WIFI_CONNECTED_EVENT = BIT0;
-static EventGroupHandle_t wifi_event_group;
-
-#define PROV_TRANSPORT_SOFTAP "softap"
-#define PROV_TRANSPORT_BLE "ble"
-
-static volatile bool mWifiConnect = false;
-
-/* Event handler for catching system events */
-static void event_handler(void *arg, esp_event_base_t event_base,
-                          int32_t event_id, void *event_data)
+//-------------------------------------------------------------------
+// NetworkManager
+//-------------------------------------------------------------------
+void NetworkManager::wifiEventHandler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
-#ifdef CONFIG_EXAMPLE_RESET_PROV_MGR_ON_FAILURE
-    static int retries;
-#endif
-    if (event_base == WIFI_PROV_EVENT)
+    NetworkManager* pNm = reinterpret_cast<NetworkManager*>(arg);
+    pNm->eventHandler(event_base, event_id, event_data);
+}
+
+void NetworkManager::eventHandler(esp_event_base_t event_base, int32_t event_id, void *event_data)
+{
+    auto now=std::chrono::steady_clock::now();
+    if(not mMutex.try_lock_until(now + std::chrono::seconds(2)))
+    {
+        ESP_LOGE(TAG, "mMutex try fail");
+        return;
+    }
+    if (event_base == WIFI_EVENT)
     {
         switch (event_id)
         {
-        case WIFI_PROV_START:
-            ESP_LOGI(TAG, "Provisioning started");
+        case WIFI_EVENT_STA_START:
+            ESP_LOGI(TAG, "Esp wifi start");
+            esp_wifi_connect();
+            Status::create().blink();
             break;
-        case WIFI_PROV_CRED_RECV:
-        {
-            wifi_sta_config_t *wifi_sta_cfg = (wifi_sta_config_t *)event_data;
-            ESP_LOGI(TAG, "Received Wi-Fi credentials"
-                          "\n\tSSID     : %s\n\tPassword : %s",
-                     (const char *)wifi_sta_cfg->ssid,
-                     (const char *)wifi_sta_cfg->password);
+        case WIFI_EVENT_STA_STOP:
+            ESP_LOGI(TAG, "Esp wifi stop");
+            esp_wifi_disconnect();
+            Status::create().blink();
             break;
-        }
-        case WIFI_PROV_CRED_FAIL:
-        {
-            wifi_prov_sta_fail_reason_t *reason = (wifi_prov_sta_fail_reason_t *)event_data;
-            ESP_LOGE(TAG, "Provisioning failed!\n\tReason : %s"
-                          "\n\tPlease reset to factory and retry provisioning",
-                     (*reason == WIFI_PROV_STA_AUTH_ERROR) ? "Wi-Fi station authentication failed" : "Wi-Fi access-point not found");
-#ifdef CONFIG_EXAMPLE_RESET_PROV_MGR_ON_FAILURE
-            retries++;
-            if (retries >= CONFIG_EXAMPLE_PROV_MGR_MAX_RETRY_CNT)
-            {
-                ESP_LOGI(TAG, "Failed to connect with provisioned AP, reseting provisioned credentials");
-                wifi_prov_mgr_reset_sm_state_on_failure();
-                retries = 0;
-            }
-#endif
+        default:
             break;
         }
-        case WIFI_PROV_CRED_SUCCESS:
-            ESP_LOGI(TAG, "Provisioning successful");
-#ifdef CONFIG_EXAMPLE_RESET_PROV_MGR_ON_FAILURE
-            retries = 0;
-#endif
+    } 
+    else if (event_base == IP_EVENT)
+    {
+        switch (event_id)
+        {
+        case IP_EVENT_STA_GOT_IP:
+        {
+            ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
+            ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
+            xEventGroupSetBits(mWifiEventGroup, WIFI_CONNECTED_EVENT);
+            Status::create().on(true);
             break;
-        case WIFI_PROV_END:
-            /* De-initialize manager once provisioning is finished */
-            wifi_prov_mgr_deinit();
-            /* Signal main application to continue execution */
-            xEventGroupSetBits(wifi_event_group, WIFI_CONNECTED_EVENT);
+        }
+        default:
+            break;
+        }
+    }
+    else if (event_base == WIFI_EVENT)
+    {
+        switch (event_id)
+        {
+        case WIFI_EVENT_STA_DISCONNECTED:
+            ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
+            esp_wifi_connect();
+            Status::create().blink();
             break;
         default:
             break;
         }
     }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START)
-    {
-        esp_wifi_connect();
-    }
-    else if (event_base == IP_EVENT && event_id == IP_EVENT_STA_GOT_IP)
-    {
-        ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-        ESP_LOGI(TAG, "Connected with IP Address:" IPSTR, IP2STR(&event->ip_info.ip));
-    }
-    else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED)
-    {
-        if(mWifiConnect)
-        {
-            ESP_LOGI(TAG, "Disconnected. Connecting to the AP again...");
-            esp_wifi_connect();
-        }
-    }
-}
-
-static void get_device_service_name(char *service_name, size_t max)
-{
-    uint8_t eth_mac[6];
-    const char *ssid_prefix = "PROV_";
-    esp_wifi_get_mac(WIFI_IF_STA, eth_mac);
-    snprintf(service_name, max, "%s%02X%02X%02X",
-             ssid_prefix, eth_mac[3], eth_mac[4], eth_mac[5]);
-}
-
-/* Handler for the optional provisioning endpoint registered by the application.
- * The data format can be chosen by applications. Here, we are using plain ascii text.
- * Applications can choose to use other formats like protobuf, JSON, XML, etc.
- */
-esp_err_t custom_prov_data_handler(uint32_t session_id, const uint8_t *inbuf, ssize_t inlen,
-                                   uint8_t **outbuf, ssize_t *outlen, void *priv_data)
-{
-    if (inbuf)
-    {
-        ESP_LOGI(TAG, "Received data: %.*s", inlen, (char *)inbuf);
-    }
-    char response[] = "SUCCESS";
-    *outbuf = (uint8_t *)strdup(response);
-    if (*outbuf == NULL)
-    {
-        ESP_LOGE(TAG, "System out of memory");
-        return ESP_ERR_NO_MEM;
-    }
-    *outlen = strlen(response) + 1; /* +1 for NULL terminating byte */
-
-    return ESP_OK;
-}
-
-bool NetworkManager::provision()
-{
-    esp_wifi_set_ps(WIFI_PS_MIN_MODEM);
-
-    /* Configuration for the provisioning manager */
-    wifi_prov_mgr_config_t config = {
-        /* What is the Provisioning Scheme that we want ?
-         * wifi_prov_scheme_softap or wifi_prov_scheme_ble */
-        .scheme = wifi_prov_scheme_ble,
-
-        /* Any default scheme specific event handler that you would
-         * like to choose. Since our example application requires
-         * neither BT nor BLE, we can choose to release the associated
-         * memory once provisioning is complete, or not needed
-         * (in case when device is already provisioned). Choosing
-         * appropriate scheme specific event handler allows the manager
-         * to take care of this automatically. This can be set to
-         * WIFI_PROV_EVENT_HANDLER_NONE when using wifi_prov_scheme_softap*/
-        .scheme_event_handler = WIFI_PROV_SCHEME_BLE_EVENT_HANDLER_FREE_BTDM};
-
-    /* Initialize provisioning manager with the
-     * configuration parameters set above */
-    ESP_ERROR_CHECK(wifi_prov_mgr_init(config));
-
-    bool provisioned = false;
-    /* Let's find out if the device is provisioned */
-    ESP_ERROR_CHECK(wifi_prov_mgr_is_provisioned(&provisioned));
-
-    if (provisioned)
-    {
-        /* We don't need the manager as device is already provisioned,
-         * so let's release it's resources */
-        wifi_prov_mgr_deinit();
-        mWifiConnect = true;
-        return false;
-    }
-
-    ESP_LOGI(TAG, "Starting provisioning");
-
-    /* What is the Device Service Name that we want
-     * This translates to :
-     *     - Wi-Fi SSID when scheme is wifi_prov_scheme_softap
-     *     - device name when scheme is wifi_prov_scheme_ble
-     */
-    char service_name[12];
-    get_device_service_name(service_name, sizeof(service_name));
-
-    /* What is the security level that we want (0 or 1):
-     *      - WIFI_PROV_SECURITY_0 is simply plain text communication.
-     *      - WIFI_PROV_SECURITY_1 is secure communication which consists of secure handshake
-     *          using X25519 key exchange and proof of possession (pop) and AES-CTR
-     *          for encryption/decryption of messages.
-     */
-    wifi_prov_security_t security = WIFI_PROV_SECURITY_1;
-
-    /* Do we want a proof-of-possession (ignored if Security 0 is selected):
-     *      - this should be a string with length > 0
-     *      - NULL if not used
-     */
-    const char *pop = "abcd1234";
-
-    /* What is the service key (could be NULL)
-     * This translates to :
-     *     - Wi-Fi password when scheme is wifi_prov_scheme_softap
-     *     - simply ignored when scheme is wifi_prov_scheme_ble
-     */
-    const char *service_key = NULL;
-
-    /* This step is only useful when scheme is wifi_prov_scheme_ble. This will
-     * set a custom 128 bit UUID which will be included in the BLE advertisement
-     * and will correspond to the primary GATT service that provides provisioning
-     * endpoints as GATT characteristics. Each GATT characteristic will be
-     * formed using the primary service UUID as base, with different auto assigned
-     * 12th and 13th bytes (assume counting starts from 0th byte). The client side
-     * applications must identify the endpoints by reading the User Characteristic
-     * Description descriptor (0x2901) for each characteristic, which contains the
-     * endpoint name of the characteristic */
-    uint8_t custom_service_uuid[] = {
-        /* LSB <---------------------------------------
-         * ---------------------------------------> MSB */
-        0xb4, 0xdf, 0x5a, 0x1c, 0x3f, 0x6b, 0xf4, 0xbf,
-        0xea, 0x4a, 0x82, 0x03, 0x04, 0x90, 0x1a, 0x02,
-    };
-    wifi_prov_scheme_ble_set_service_uuid(custom_service_uuid);
-
-    /* An optional endpoint that applications can create if they expect to
-     * get some additional custom data during provisioning workflow.
-     * The endpoint name can be anything of your choice.
-     * This call must be made before starting the provisioning.
-     */
-    wifi_prov_mgr_endpoint_create("custom-data");
-    /* Start provisioning service */
-    ESP_ERROR_CHECK(wifi_prov_mgr_start_provisioning(security, pop, service_name, service_key));
-
-    /* The handler for the optional endpoint created above.
-     * This call must be made after starting the provisioning, and only if the endpoint
-     * has already been created above.
-     */
-    wifi_prov_mgr_endpoint_register("custom-data", custom_prov_data_handler, NULL);
-
-    xEventGroupWaitBits(wifi_event_group, WIFI_CONNECTED_EVENT, true, false, portMAX_DELAY);
-    esp_wifi_set_ps(WIFI_PS_NONE);
-    mWifiConnect = true;
-    return true;
-}
-
-bool NetworkManager::disconnect()
-{
-    ESP_LOGI(TAG, "Disconnect WIFI");
-    mWifiConnect = false;
-    esp_wifi_disconnect();
-    return true;
+    mMutex.unlock();
 }
 
 bool NetworkManager::removeProvision()
 {
-    disconnect();
-    wifi_prov_mgr_reset_provisioning();
+    wifi_config_t wifi_config{};
+    ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
     return true;
 }
 
 bool NetworkManager::init()
 {
+    std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
+
     /* Initialize NVS partition */
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -282,29 +128,59 @@ bool NetworkManager::init()
 
     /* Initialize the event loop */
     ESP_ERROR_CHECK(esp_event_loop_create_default());
-    wifi_event_group = xEventGroupCreate();
+    mWifiEventGroup = xEventGroupCreate();
 
     /* Register our event handler for Wi-Fi, IP and Provisioning related events */
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_PROV_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
-    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifiEventHandler, this));
+    ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifiEventHandler, this));
 
     /* Initialize Wi-Fi including netif with default config */
     esp_netif_create_default_wifi_sta();
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    if (not provision())
+    wifi_config_t wifi_config;
+    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+    ESP_ERROR_CHECK( esp_wifi_get_config(WIFI_IF_STA, &wifi_config) );
+    if(strlen((char*)wifi_config.sta.ssid) != 0)
     {
-        ESP_LOGI(TAG, "Already provisioned, starting Wi-Fi STA");
-        /* Start Wi-Fi in station mode */
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+        ESP_ERROR_CHECK(esp_wifi_start());
+    
+        ESP_LOGI(TAG, "SSID:%s", wifi_config.sta.ssid);
+        ESP_LOGI(TAG, "PASSWORD:%s", wifi_config.sta.password);
+    }
+    else
+    {
+        ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_NULL));
         ESP_ERROR_CHECK(esp_wifi_start());
     }
 
     esp_wifi_set_ps(WIFI_PS_NONE);
     mPairBut.enable();
     return true;
+}
+
+bool NetworkManager::join(const char *ssid, const char *pass, int timeout_ms)
+{
+    {
+        std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
+
+        wifi_config_t wifi_config{};
+        strlcpy((char *) wifi_config.sta.ssid, ssid, sizeof(wifi_config.sta.ssid));
+        if (pass) {
+            strlcpy((char *) wifi_config.sta.password, pass, sizeof(wifi_config.sta.password));
+        }
+        ESP_ERROR_CHECK( esp_wifi_stop() );
+        ESP_ERROR_CHECK( esp_wifi_set_storage(WIFI_STORAGE_FLASH) );
+        ESP_ERROR_CHECK( esp_wifi_set_mode(WIFI_MODE_STA) );
+        ESP_ERROR_CHECK( esp_wifi_set_config(WIFI_IF_STA, &wifi_config) );
+        ESP_ERROR_CHECK( esp_wifi_start() );
+    }
+
+    int bits = xEventGroupWaitBits(mWifiEventGroup, WIFI_CONNECTED_EVENT,
+                                   pdFALSE, pdTRUE, timeout_ms / portTICK_PERIOD_MS);
+    return (bits & WIFI_CONNECTED_EVENT) != 0;
 }
 
 NetworkManager &NetworkManager::create()
@@ -329,4 +205,71 @@ NetworkManager::NetworkManager() :
     gpio_set_direction(gpio_num_t::GPIO_NUM_20, GPIO_MODE_OUTPUT);
     gpio_set_level(gpio_num_t::GPIO_NUM_20, 0);
 #endif
+}
+
+
+//-------------------------------------------------------------------
+// WifiCmd
+//-------------------------------------------------------------------
+
+WifiCmd::WifiCmd() :
+    Cmd("join")
+{
+}
+
+bool WifiCmd::excute(const std::vector<std::string>& args)
+{
+    if(args.size() < 3)
+    {
+        printf("%s\n", help().c_str());
+        return false;
+    }
+
+    ESP_LOGI(__func__, "Connecting to '%s'", args.at(1).c_str());
+    constexpr int timeOut = 10000;
+
+    bool connected = NetworkManager::create().join(args.at(1).c_str(),
+                               args.at(2).c_str(),
+                               timeOut);
+    if (!connected) {
+        ESP_LOGW(__func__, "Connection timed out");
+        return false;
+    }
+    ESP_LOGI(__func__, "Connected");
+    return true;
+}
+
+std::string WifiCmd::help()
+{
+    return std::string("join <ssid> <password>");
+}
+
+//-------------------------------------------------------------------
+// WifiInfoCmd
+//-------------------------------------------------------------------
+WifiInfoCmd::WifiInfoCmd() :
+    Cmd("info")
+{
+}
+
+std::string WifiInfoCmd::help()
+{
+    return std::string("it will print wifi ap info");
+}
+
+bool WifiInfoCmd::excute(const std::vector<std::string>& args)
+{
+    wifi_config_t wifi_config;
+    esp_wifi_set_storage(WIFI_STORAGE_FLASH);
+    esp_wifi_get_config(WIFI_IF_STA, &wifi_config);
+    tcpip_adapter_ip_info_t ipInfo;
+            
+    // IP address.
+    tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_STA, &ipInfo);
+
+    printf("\r\nSSID:%s\r\n", wifi_config.sta.ssid);
+    printf("PASSWORD:%s\r\n", wifi_config.sta.password);
+    printf("IP: " IPSTR "\n", IP2STR(&ipInfo.ip));
+    printf("GW: " IPSTR "\n", IP2STR(&ipInfo.gw));
+    return true;
 }
