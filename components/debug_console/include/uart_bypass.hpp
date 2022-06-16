@@ -16,8 +16,8 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef LOG_CONSOLE_OUT_HPP
-#define LOG_CONSOLE_OUT_HPP
+#ifndef UART_BYPASS_HPP
+#define UART_BYPASS_HPP
 
 #include <stdio.h>
 #include <mutex>
@@ -26,12 +26,12 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "console.hpp"
 
 
-//! It is SD card class inherit logger client
-class LogConsoleOut : public Client, protected Cmd
+//! To by pass uart debug message to the USB CDC
+class UartByPass : public Client, protected Cmd
 {
 public:
-    LogConsoleOut();
-    ~LogConsoleOut() = default;
+    UartByPass();
+    ~UartByPass() = default;
 
 protected:
     bool write(const std::vector<uint8_t>& msg) override;

@@ -24,7 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <mutex>
 #include "task.hpp"
 
-class LogConsoleOut;
+class UartByPass;
 
 class Cmd
 {
@@ -57,7 +57,7 @@ protected:
     friend class Cmd;
     std::list<Cmd*> mCmdList;
     std::unique_ptr<Help> mpHelp;
-    std::unique_ptr<LogConsoleOut> mpUartConsole;
+    std::unique_ptr<UartByPass> mpUartConsole;
 
     Console();
     ~Console() = default;

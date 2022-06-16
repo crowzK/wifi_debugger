@@ -16,27 +16,27 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "log_console_out.hpp"
+#include "uart_bypass.hpp"
 
-LogConsoleOut::LogConsoleOut() :
+UartByPass::UartByPass() :
     Client(DebugMsgRx::create(), INT32_MAX - 1),
     Cmd("uart")
 {
 
 }
 
-bool LogConsoleOut::write(const std::vector<uint8_t>& msg)
+bool UartByPass::write(const std::vector<uint8_t>& msg)
 {
     printf("%.*s", msg.size(), (char*)msg.data());
     return true;
 }
 
-std::string LogConsoleOut::help()
+std::string UartByPass::help()
 {
     return std::string("Send message direct to the UART");
 }
 
-bool LogConsoleOut::excute(const std::vector<std::string>& args)
+bool UartByPass::excute(const std::vector<std::string>& args)
 {
     int stdin_fileno = fileno(stdin);
     printf("Enter usb-uart mode press ctrl+B if you want to exit\n");

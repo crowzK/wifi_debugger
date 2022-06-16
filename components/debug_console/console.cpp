@@ -1,12 +1,20 @@
-/* Wi-Fi Provisioning Manager Example
-
-   This example code is in the Public Domain (or CC0 licensed, at your option.)
-
-   Unless required by applicable law or agreed to in writing, this
-   software is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-   CONDITIONS OF ANY KIND, either express or implied.
+/*
+Copyright (C) Yudoc Kim <craven@crowz.kr>
+ 
+This program is free software; you can redistribute it and/or
+modify it under the terms of the GNU General Public License
+as published by the Free Software Foundation; either version 2
+of the License, or (at your option) any later version.
+ 
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+ 
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
-
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -17,7 +25,7 @@
 #include "esp_vfs_dev.h"
 #include "esp_vfs_usb_serial_jtag.h"
 #include "driver/usb_serial_jtag.h"
-#include "log_console_out.hpp"
+#include "uart_bypass.hpp"
 
 #include "console.hpp"
 //-------------------------------------------------------------------
@@ -170,7 +178,7 @@ void Console::task()
 
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();
-    mpUartConsole = std::make_unique<LogConsoleOut>();
+    mpUartConsole = std::make_unique<UartByPass>();
     help();
     std::string cmd;
     while(mRun)
