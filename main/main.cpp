@@ -53,5 +53,5 @@ extern "C" void app_main(void)
     WsHandler::create();
     PyOcdServer::create();
     FileServerHandler::create();
-    //LogFile::create().init();
+    LogFile::create().init();
 }
