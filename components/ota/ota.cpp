@@ -33,6 +33,16 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 static const char *TAG = "ota";
 
+#if CONFIG_M5STACK_CORE
+const char* Ota::cBinFileName = "m5stack.bin";
+#elif CONFIG_TTGO_T1
+const char* Ota::cBinFileName = "ttgot1.bin";
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
+const char* Ota::cBinFileName = "wifiDebuggerV1.bin";
+#elif CONFIG_WIFI_DEBUGGER_V_0_2
+const char* Ota::cBinFileName = "wifiDebuggerV2.bin";
+#endif
+
 void Ota::printSha256 (const uint8_t *image_hash, const char *label) const
 {
     char hash_print[HASH_LEN * 2 + 1];
@@ -47,6 +57,11 @@ Ota& Ota::create()
 {
     static Ota ota;
     return ota;
+}
+
+std::string Ota::getBinFilePath()
+{
+    return std::string("/sdcard/firmware/") + std::string(cBinFileName);
 }
 
 Ota::Ota()

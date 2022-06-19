@@ -26,13 +26,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 class Ota
 {
 public:
+    static const char* cBinFileName;
+
     static Ota& create();
+    static std::string getBinFilePath();
 
     //! \brief Firmware update with given file
     void update(const std::string& filePath);
 
     //! \brief Search firmware binary files from the SD card
     std::vector<std::string> searchBins();
+
 
 protected:
     BinUploadHandler mUploadHandler;
