@@ -36,6 +36,7 @@ extern "C"
 #include "file_server.hpp"
 #include "fs_manager.hpp"
 #include "bin_upload.hpp"
+#include "ota.hpp"
 
 static const char *TAG = "bin_upload";
 
@@ -43,9 +44,10 @@ static void rebootTimerCb(void *arg)
 {
     esp_restart();
 }
+static std::string uriPath = std::string("/binupload/") + std::string(Ota::cBinFileName);
 
 BinUploadHandler::BinUploadHandler() :
-    UriHandler("/binupload/WifiDebugger.bin", HTTP_POST),
+    UriHandler(uriPath.c_str(), HTTP_POST),
     cBasePath(FsManager::create().getMountPoint())
 {
 
@@ -53,9 +55,21 @@ BinUploadHandler::BinUploadHandler() :
 
 esp_err_t BinUploadHandler::userHandler(httpd_req *req)
 {
-    const char* filepath = "/sdcard/firmware/WifiDebugger.bin";
+    auto path = Ota::getBinFilePath();
+    const char* filepath = path.c_str();
+    printf("file %s\n", filepath);
     FILE *fd = NULL;
     struct stat file_stat;
+
+    struct stat _stat = {};
+    if(stat(Ota::cBinFileDir, &_stat))
+    {
+        if(mkdir(Ota::cBinFileDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+        {
+            ESP_LOGE(TAG, "Cannot create dir(%s)", Ota::cBinFileDir);
+            return ESP_FAIL;
+        }
+    }
 
     if (stat(filepath, &file_stat) == 0) {
         ESP_LOGE(TAG, "File already exists : %s", filepath);

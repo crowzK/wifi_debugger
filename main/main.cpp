@@ -40,7 +40,7 @@ extern "C" void app_main(void)
 
     UartService::create();
     auto& ota = Ota::create();
-    ota.update("/sdcard/firmware/WifiDebugger.bin");
+    ota.update(Ota::getBinFilePath().c_str());
 
     // time zone setting
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
