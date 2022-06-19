@@ -32,6 +32,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "status.hpp"
 #include "console.hpp"
 
+#if CONFIG_M5STACK_CORE
+static const char* cBinFilePath = "/sdcard/firmware/m5stack.bin";
+#elif CONFIG_TTGO_T1
+static const char* cBinFilePath = "/sdcard/firmware/ttgot1.bin";
+#elif CONFIG_WIFI_DEBUGGER_V_0_1
+static const char* cBinFilePath = "/sdcard/firmware/wifiDebuggerV1.bin";
+#elif CONFIG_WIFI_DEBUGGER_V_0_2
+static const char* cBinFilePath = "/sdcard/firmware/wifiDebuggerV2.bin";
+#endif
 extern "C" void app_main(void)
 {
     Status::create();
@@ -40,7 +49,7 @@ extern "C" void app_main(void)
 
     UartService::create();
     auto& ota = Ota::create();
-    ota.update("/sdcard/firmware/WifiDebugger.bin");
+    ota.update(cBinFilePath);
 
     // time zone setting
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
