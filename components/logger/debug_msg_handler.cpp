@@ -42,7 +42,7 @@ Client::~Client()
 
 MsgProxy::MsgProxy(const char* cName) :
     Task(cName),
-    mQueue(10)
+    mQueue(20)
 {
 }
 
