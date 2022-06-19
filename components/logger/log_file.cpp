@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "status.hpp"
 #include "sntp.h"
 
-
+using namespace std::chrono_literals;
 static const char *TAG = "logFile";
 
 LogFile& LogFile::create()
@@ -39,8 +39,10 @@ LogFile& LogFile::create()
 
 LogFile::LogFile() :
     Client(DebugMsgRx::create(), INT32_MAX),
+    Task(__func__),
     mFsManager(FsManager::create()),
     cMountPoint(mFsManager.getMountPoint()),
+    mMsgQueue(1024),
     pFile(nullptr)
 {
 
@@ -56,15 +58,9 @@ LogFile::~LogFile()
 
 void LogFile::init()
 {
-    while(sntp_getreachability(0) == 0)
+    if(mFsManager.isMount())
     {
-        vTaskDelay(100);
-    }
-
-    std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
-    if(mFsManager.mount())
-    {
-        pFile = createFile();
+        start();
     }
 }
 
@@ -131,29 +127,46 @@ FILE* LogFile::createFile()
     return fopen(mFilePath.c_str(), "w");
 }
 
-bool LogFile::write(const char* msg, uint32_t length)
+bool LogFile::write(const std::vector<uint8_t>& msg)
 {
-    using namespace std::chrono_literals;
-
-    if(not mMutex.try_lock_for(100ms))
-    {
-        return true;
-    }
-
-    if(pFile == nullptr)
-    {
-        mMutex.unlock();
-        return true;
-    }
-    
-    fwrite(msg, 1, length, pFile);
-    fflush(pFile);
-    fsync(fileno(pFile));
-    mMutex.unlock();
+    std::vector<uint8_t> _msg = msg;
+    mMsgQueue.push(_msg, 0ms);
     return true;
 }
 
-bool LogFile::write(const std::vector<uint8_t>& msg)
+void LogFile::task()
 {
-    return write((char*)msg.data(), msg.size());
+    while(mRun and (sntp_getreachability(0) == 0))
+    {
+        vTaskDelay(100);
+    }
+
+    if(mRun)
+    {
+        std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
+        if(mFsManager.mount())
+        {
+            pFile = createFile();
+        }
+    }
+
+    while(mRun)
+    {
+        std::vector<uint8_t> _msg;
+        if(mMsgQueue.pop(_msg, 100ms))
+        {
+            std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
+            if(pFile == nullptr)
+            {
+                continue;
+            }
+            fwrite(_msg.data(), 1, _msg.size(), pFile);
+
+            if(mMsgQueue.isEmpty())
+            {
+                fflush(pFile);
+                fsync(fileno(pFile));
+            }
+        }
+    }
 }

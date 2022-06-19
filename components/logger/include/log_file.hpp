@@ -22,11 +22,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <stdio.h>
 #include <mutex>
 #include <string>
+#include <task.hpp>
 #include "debug_msg_handler.hpp"
 #include "fs_manager.hpp"
+#include "blocking_queue.hpp"
 
 //! It is SD card class inherit logger client
-class LogFile : public Client
+class LogFile : public Client, private Task
 {
 public:
     static LogFile& create();
@@ -37,6 +39,7 @@ protected:
     std::recursive_timed_mutex mMutex;
     FsManager& mFsManager;
     const char* cMountPoint;
+    BlockingQueue<std::vector<uint8_t>> mMsgQueue;
 
     FILE* pFile;
     std::string mFilePath;
@@ -55,6 +58,8 @@ protected:
     //! \brief Write a mesage to the SD card
     //! \param msg message vector
     bool write(const std::vector<uint8_t>& msg) override;
+
+    void task() override;
 };
 
 #endif
