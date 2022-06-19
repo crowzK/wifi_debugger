@@ -205,6 +205,16 @@ void Ota::update(const std::string& filePath)
     //    return;
     //}
 
+    struct stat _stat = {};
+    if(stat("/sdcard/firmware", &_stat))
+    {
+        if(mkdir("/sdcard/firmware", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+        {
+            ESP_LOGE(TAG, "Cannot create dir(%s)", "/sdcard/firmware");
+            return;
+        }
+    }
+
     std::ifstream bin(filePath, std::ios_base::binary);
     if(not bin)
     {
