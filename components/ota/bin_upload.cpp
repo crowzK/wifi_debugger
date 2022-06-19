@@ -61,6 +61,16 @@ esp_err_t BinUploadHandler::userHandler(httpd_req *req)
     FILE *fd = NULL;
     struct stat file_stat;
 
+    struct stat _stat = {};
+    if(stat("/sdcard/firmware", &_stat))
+    {
+        if(mkdir("/sdcard/firmware", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+        {
+            ESP_LOGE(TAG, "Cannot create dir(%s)", "/sdcard/firmware");
+            return ESP_FAIL;
+        }
+    }
+
     if (stat(filepath, &file_stat) == 0) {
         ESP_LOGE(TAG, "File already exists : %s", filepath);
         /* Respond with 400 Bad Request */
