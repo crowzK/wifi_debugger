@@ -25,6 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_vfs_dev.h"
 #include "esp_vfs_usb_serial_jtag.h"
 #include "driver/usb_serial_jtag.h"
+#include "hal/usb_serial_jtag_ll.h"
 #include "uart_bypass.hpp"
 
 #include "console.hpp"
@@ -75,7 +76,7 @@ Console::Console() :
     Task(__func__)
 {
     std::lock_guard<std::recursive_mutex> lock(mMutex);
-
+    init();
     start();
 }
 
@@ -89,22 +90,6 @@ bool Console::init()
     /* Move the caret to the beginning of the next line on '\n' */
     esp_vfs_dev_usb_serial_jtag_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
 
-    // waiting usb-serial cable attached
-    while(1)
-    {
-        char c;
-        int ret = read(fileno(stdin), &c, 1);
-        if(ret > 0)
-        {
-            break;
-        }
-        vTaskDelay(100);
-    }
-
-    /* Enable non-blocking mode on stdin and stdout */
-    fcntl(fileno(stdout), F_SETFL, 0);
-    fcntl(fileno(stdin), F_SETFL, 0);
-
     usb_serial_jtag_driver_config_t usb_serial_jtag_config
     {
         .tx_buffer_size = 1024,
@@ -114,8 +99,6 @@ bool Console::init()
     /* Install USB-SERIAL-JTAG driver for interrupt-driven reads and writes */
     usb_serial_jtag_driver_install(&usb_serial_jtag_config);
 
-    /* Tell vfs to use usb-serial-jtag driver */
-    esp_vfs_usb_serial_jtag_use_driver();
     return true;
 }
 
@@ -174,7 +157,20 @@ std::vector<std::string> Console::split(const std::string& cmd)
 
 void Console::task()
 {
-    init();
+    // waiting usb-serial cable attached
+    while(1)
+    {
+        char c;
+        int ret = usb_serial_jtag_read_bytes(&c, 1, pdMS_TO_TICKS(100));
+        if(ret > 0)
+        {
+            break;
+        }
+    }
+
+    /* Tell vfs to use usb-serial-jtag driver */
+    esp_vfs_usb_serial_jtag_use_driver();
+
 
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();
