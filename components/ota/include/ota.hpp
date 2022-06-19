@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 class Ota
 {
 public:
+    static const char* cBinFileDir;
     static const char* cBinFileName;
 
     static Ota& create();

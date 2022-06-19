@@ -62,11 +62,11 @@ esp_err_t BinUploadHandler::userHandler(httpd_req *req)
     struct stat file_stat;
 
     struct stat _stat = {};
-    if(stat("/sdcard/firmware", &_stat))
+    if(stat(Ota::cBinFileDir, &_stat))
     {
-        if(mkdir("/sdcard/firmware", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
+        if(mkdir(Ota::cBinFileDir, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH))
         {
-            ESP_LOGE(TAG, "Cannot create dir(%s)", "/sdcard/firmware");
+            ESP_LOGE(TAG, "Cannot create dir(%s)", Ota::cBinFileDir);
             return ESP_FAIL;
         }
     }

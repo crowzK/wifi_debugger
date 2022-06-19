@@ -43,6 +43,8 @@ const char* Ota::cBinFileName = "wifiDebuggerV1.bin";
 const char* Ota::cBinFileName = "wifiDebuggerV2.bin";
 #endif
 
+const char* Ota::cBinFileDir = "/sdcard/firmware";
+
 void Ota::printSha256 (const uint8_t *image_hash, const char *label) const
 {
     char hash_print[HASH_LEN * 2 + 1];
@@ -61,7 +63,7 @@ Ota& Ota::create()
 
 std::string Ota::getBinFilePath()
 {
-    return std::string("/sdcard/firmware/") + std::string(cBinFileName);
+    return std::string(cBinFileDir) + std::string("/") + std::string(cBinFileName);
 }
 
 Ota::Ota()
