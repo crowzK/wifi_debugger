@@ -127,10 +127,9 @@ FILE* LogFile::createFile()
     return fopen(mFilePath.c_str(), "w");
 }
 
-bool LogFile::write(const std::vector<uint8_t>& msg)
+bool LogFile::write(const MsgProxy::Msg& msg)
 {
-    std::vector<uint8_t> _msg = msg;
-    mMsgQueue.push(_msg, 0ms);
+    mMsgQueue.push(msg, 0ms);
     return true;
 }
 
@@ -152,15 +151,20 @@ void LogFile::task()
 
     while(mRun)
     {
-        std::vector<uint8_t> _msg;
-        if(mMsgQueue.pop(_msg, 100ms))
+        MsgProxy::Msg msg;
+        if(mMsgQueue.pop(msg, 100ms))
         {
             std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
             if(pFile == nullptr)
             {
                 continue;
             }
-            fwrite(_msg.data(), 1, _msg.size(), pFile);
+            if(msg.strStart)
+            {
+                auto time = MsgProxy::getTime(msg.time);
+                fwrite(time.c_str(), 1,time.length(), pFile);
+            }
+            fwrite(msg.data.data(), 1, msg.data.size(), pFile);
 
             if(mMsgQueue.isEmpty())
             {

@@ -69,12 +69,18 @@ WebLogSender::~WebLogSender()
 
 }
 
-bool WebLogSender::write(const std::vector<uint8_t>& msg)
+bool WebLogSender::write(const MsgProxy::Msg& msg)
 {
     httpd_ws_frame_t ws_pkt = {};
-    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
-    ws_pkt.payload = (uint8_t*)msg.data();
-    ws_pkt.len = msg.size();
+    std::string str;
+    if(msg.strStart)
+    {
+        str = MsgProxy::getTime(msg.time);
+    }
+    
+    str += msg.data;
+    ws_pkt.payload = (uint8_t*)str.c_str();
+    ws_pkt.len = str.length();
     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
 
     if(httpd_ws_send_frame_async(hd, fd, &ws_pkt) != ESP_OK)
@@ -95,12 +101,28 @@ WsHandler& WsHandler::create()
 }
 
 WsHandler::WsHandler() :
-    UriHandler("/ws", HTTP_GET, true)
+    UriHandler("/ws", HTTP_GET, true),
+    mStrStart(true)
 {
 }
 
+static std::string string_to_hex(const std::string& input)
+{
+    static const char hex_digits[] = "0123456789ABCDEF";
+
+    std::string output;
+    output.reserve(input.length() * 2);
+    for (unsigned char c : input)
+    {
+        output.push_back(hex_digits[c >> 4]);
+        output.push_back(hex_digits[c & 15]);
+    }
+    return output;
+}
 esp_err_t WsHandler::userHandler(httpd_req *req)
 {
+    std::unique_lock<std::mutex> lock(mMutex);
+
     if (req->method == HTTP_GET) {
         ESP_LOGI(TAG, "Handshake done, the new connection was opened");
         return ESP_OK;
@@ -113,7 +135,7 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
 
     static constexpr uint32_t cBufferLeng = 128;
     std::vector<uint8_t> tx;
-    tx.resize(cBufferLeng);
+    tx.resize(cBufferLeng + 1);
     httpd_ws_frame_t ws_pkt = {};
     ws_pkt.payload = tx.data();
     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
@@ -152,8 +174,25 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
         }
         return ret;
     }
-    
-    tx.resize(ws_pkt.len);
-    DebugMsgTx::create().write(tx);
+    tx[ws_pkt.len] = 0;
+    auto msgs = MsgProxy::convToMsg((char*)tx.data());
+    for(auto& msg: msgs)
+    {
+        if(msg.data.length() == 0)
+        {
+            continue;
+        }
+        if(mStrStart)
+        {
+            msg.strStart = true;
+            mStrStart = false;
+        }
+        if(msg.data.back() == '\n')
+        {
+            mStrStart = true;
+        }
+        DebugMsgTx::create().write(msg);
+    }
+
     return ret;
 }

@@ -17,6 +17,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 #include <algorithm>
+#include <iostream>
+#include <sstream>
+#include <regex>
 #include "debug_msg_handler.hpp"
 #include "esp_log.h"
 
@@ -82,12 +85,12 @@ bool MsgProxy::isAdded(int id)
     return it != mClientList.end();
 }
 
-bool MsgProxy::write(std::vector<uint8_t>& msg)
+bool MsgProxy::write(Msg& msg)
 {
     return mQueue.push(msg, std::chrono::milliseconds(100));
 }
 
-void MsgProxy::sendMsg(const std::vector<uint8_t>&msg)
+void MsgProxy::sendMsg(const Msg& msg)
 {  
     std::list<Client*> erase;
     for(auto it = mClientList.begin(); it != mClientList.end(); ++it)
@@ -107,6 +110,49 @@ void MsgProxy::sendMsg(const std::vector<uint8_t>&msg)
         delete *it;
     }
 }
+
+std::vector<std::string> MsgProxy::split(const std::string& cmd)
+{
+	std::string _cmd = std::regex_replace(cmd, std::regex("\r\n"), "\n");
+	_cmd = std::regex_replace(_cmd, std::regex("\n\r"), "\n");
+	_cmd = std::regex_replace(_cmd, std::regex("\r"), "\n");
+	_cmd = std::regex_replace(_cmd, std::regex("\n"), "\r\n");
+    std::istringstream iss(_cmd);
+    std::string buffer;
+
+    std::vector<std::string> result;
+    while (std::getline(iss, buffer, '\r')) 
+    {
+        result.push_back(buffer);
+    }
+
+    return result;
+}
+
+std::vector<MsgProxy::Msg> MsgProxy::convToMsg(char* str)
+{
+    std::vector<MsgProxy::Msg> msgVector;
+    auto strs = split(std::string(str));
+    struct timeval time;
+    gettimeofday(&time, NULL);
+    for(auto& _str : strs)
+    {
+        msgVector.emplace_back(MsgProxy::Msg{.data = std::move(_str), .strStart = false, .time = time});
+    }
+    return msgVector;
+}
+
+std::string MsgProxy::getTime(const struct timeval& time)
+{
+    std::time_t t = time.tv_sec;
+    tm local = *localtime(&t);
+    int ms = time.tv_usec / 1000;
+
+    char str[20];
+    sprintf(str, "[%02dT%02d:%02d:%02d:%03d] ", local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec, ms);
+    return std::string(str);
+}
+
 
 //-------------------------------------------------------------------
 // DebugMsgRx
@@ -130,54 +176,15 @@ DebugMsgRx::~DebugMsgRx()
 
 }
 
-void DebugMsgRx::getTime(std::vector<uint8_t>& msg)
-{
-    struct timeval tv_now;
-    gettimeofday(&tv_now, NULL);
-
-    std::time_t t = tv_now.tv_sec;
-    tm local = *localtime(&t);
-    int ms = tv_now.tv_usec / 1000;
-
-    msg.resize(18);
-    sprintf((char*)msg.data(), "[%02dT%02d:%02d:%02d:%03d]", local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec, ms);
-    msg[17] = ' ';
-}
-
 void DebugMsgRx::task()
 {
-	std::vector<uint8_t> strBuffer;
-	strBuffer.reserve(512);
-    // strBuffer.resize(timeStrLen);
-
     while (mRun) 
     {
-        std::vector<uint8_t> msg;
-        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.size())
+        Msg msg;
+        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.data.size())
         {
             std::lock_guard<std::recursive_mutex> lock(mMutex);
-
-            for(int i = 0; i < msg.size(); ++i)
-            {
-                uint8_t d = msg[i];
-                if(strBuffer.size() == 0)
-                {
-					getTime(strBuffer);
-                }
-				if(d == '\r')
-				{
-					continue;
-				}
-				if(d == '\n' or strBuffer.size() >= 512)
-				{
-					strBuffer.push_back('\r');
-					strBuffer.push_back('\n');
-                    sendMsg(strBuffer);
-                    strBuffer.resize(0);
-					continue;
-				}
-				strBuffer.push_back(d);
-            }
+            sendMsg(msg);
         }
     }
 }
@@ -208,8 +215,8 @@ void DebugMsgTx::task()
 {
     while (mRun) 
     {
-        std::vector<uint8_t> msg;
-        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.size())
+        Msg msg;
+        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.data.size())
         {
             std::lock_guard<std::recursive_mutex> lock(mMutex);
             sendMsg(msg);

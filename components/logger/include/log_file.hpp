@@ -39,7 +39,7 @@ protected:
     std::recursive_timed_mutex mMutex;
     FsManager& mFsManager;
     const char* cMountPoint;
-    BlockingQueue<std::vector<uint8_t>> mMsgQueue;
+    BlockingQueue<MsgProxy::Msg> mMsgQueue;
 
     FILE* pFile;
     std::string mFilePath;
@@ -57,7 +57,7 @@ protected:
 
     //! \brief Write a mesage to the SD card
     //! \param msg message vector
-    bool write(const std::vector<uint8_t>& msg) override;
+    bool write(const MsgProxy::Msg& msg) override;
 
     void task() override;
 };

@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <stdint.h>
 #include <vector>
+#include <mutex>
 #include "web_server.hpp"
 #include "debug_msg_handler.hpp"
 
@@ -48,7 +49,7 @@ public:
     ~WebLogSender();
 
 protected:
-    bool write(const std::vector<uint8_t>& msg) override;
+    bool write(const MsgProxy::Msg& msg) override;
 };
 
 //! Web sockek handler
@@ -60,6 +61,9 @@ public:
     static WsHandler& create();
 
 protected:
+    std::mutex mMutex;
+    bool mStrStart;
+
     WsHandler();
     ~WsHandler() = default;
     esp_err_t userHandler(httpd_req *req) override;

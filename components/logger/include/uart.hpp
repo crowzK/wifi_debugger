@@ -34,7 +34,7 @@ public:
     
 protected:
     const int cUartNum;
-    bool write(const std::vector<uint8_t>& msg) override;
+    bool write(const MsgProxy::Msg& msg) override;
 };
 
 //! For receinv message from the UART

@@ -34,7 +34,7 @@ public:
     ~UartByPass() = default;
 
 protected:
-    bool write(const std::vector<uint8_t>& msg) override;
+    bool write(const MsgProxy::Msg& msg) override;
     std::string help();
     bool excute(const std::vector<std::string>& args);
 };

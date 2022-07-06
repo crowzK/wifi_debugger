@@ -15,8 +15,14 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
+extern "C"
+{
+    #include <unistd.h>
+    #include <stdint.h>
+};
 
 #include "uart_bypass.hpp"
+#include "esp_log.h"
 
 UartByPass::UartByPass() :
     Client(DebugMsgRx::create(), INT32_MAX - 1),
@@ -25,9 +31,13 @@ UartByPass::UartByPass() :
 
 }
 
-bool UartByPass::write(const std::vector<uint8_t>& msg)
+bool UartByPass::write(const MsgProxy::Msg& msg)
 {
-    printf("%.*s", msg.size(), (char*)msg.data());
+    fwrite(msg.data.c_str(), 1, msg.data.length(), stdout);
+    if((msg.data.back() < '0') and msg.data.back() > 'z')
+    {
+        fflush(stdout);
+    }
     return true;
 }
 
@@ -50,13 +60,15 @@ bool UartByPass::excute(const std::vector<std::string>& args)
                 printf("escape cmd enter\n");
                 break;
             }
-            if(c == '\n')
+            MsgProxy::Msg msg{};
+            if(c == '\r')
             {
-                c = '\r';
+                c = '\n';
+                msg.strStart = true;
             }
-            std::vector<uint8_t> tx;
-            tx.push_back(c);
-            DebugMsgTx::create().write(tx);
+            gettimeofday(&msg.time, NULL);
+            msg.data = c;
+            DebugMsgTx::create().write(msg);
         }
     }
     return true;

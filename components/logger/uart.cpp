@@ -18,6 +18,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <thread>
 #include <memory>
+#include <string>
+#include <algorithm>
+#include <iostream>
+#include <sstream>
 
 #include "esp_system.h"
 #include "esp_log.h"
@@ -39,9 +43,9 @@ UartTx::UartTx(int uartPortNum):
 {
 }
 
-bool UartTx::write(const std::vector<uint8_t>& msg)
+bool UartTx::write(const MsgProxy::Msg& msg)
 {
-    uart_write_bytes(cUartNum, msg.data(), msg.size());
+    uart_write_bytes(cUartNum, msg.data.data(), msg.data.size());
     return true;
 }
 
@@ -55,17 +59,43 @@ UartRx::UartRx(int uartPortNum):
     
 }
 
+std::string string_to_hex(const std::string& input)
+{
+    static const char hex_digits[] = "0123456789ABCDEF";
+
+    std::string output;
+    output.reserve(input.length() * 2);
+    for (unsigned char c : input)
+    {
+        output.push_back(hex_digits[c >> 4]);
+        output.push_back(hex_digits[c & 15]);
+    }
+    return output;
+}
+
 void UartRx::task()
 {
+    char buffer[RX_BUF_SIZE + 1];
+    bool newLine = true;
     while(mRun)
     {
         std::vector<uint8_t> rcvBuffer;
         rcvBuffer.resize(RX_BUF_SIZE + 1);
-        const int rxBytes = uart_read_bytes(cUartNum, rcvBuffer.data(), RX_BUF_SIZE, 10);
+        const int rxBytes = uart_read_bytes(cUartNum, buffer, RX_BUF_SIZE, 10);
         if(rxBytes)
         {
-            rcvBuffer.resize(rxBytes);
-            DebugMsgRx::create().write(rcvBuffer);
+            buffer[rxBytes] = 0;
+            std::string str(buffer);
+            auto strs = MsgProxy::split(str);
+            for(auto& _str: strs)
+            {
+                MsgProxy::Msg msg;
+                gettimeofday(&msg.time, NULL);
+                msg.data = std::move(_str);
+                msg.strStart = newLine;
+                newLine = msg.data.back() == '\n';
+                DebugMsgRx::create().write(msg);
+            }
         }
     }
 }
@@ -81,7 +111,7 @@ UartService& UartService::create()
 }
 
 UartService::UartService() :
-    mConfig{.baudRate = 230400, .uartNum = 1}
+    mConfig{.baudRate = 1500000, .uartNum = 1}
 {
     init(mConfig);
 }
