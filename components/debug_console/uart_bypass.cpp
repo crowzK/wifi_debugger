@@ -15,29 +15,24 @@ You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
-extern "C"
-{
-    #include <unistd.h>
-    #include <stdint.h>
-};
 
+#include <unistd.h>
+#include <stdint.h>
 #include "uart_bypass.hpp"
 #include "esp_log.h"
 
 UartByPass::UartByPass() :
     Client(DebugMsgRx::create(), INT32_MAX - 1),
-    Cmd("uart")
+    Cmd("uart"),
+    Task(__func__),
+    mQueue(20)
 {
-
+    start();
 }
 
 bool UartByPass::write(const MsgProxy::Msg& msg)
 {
-    fwrite(msg.data.c_str(), 1, msg.data.length(), stdout);
-    if((msg.data.back() < '0') and msg.data.back() > 'z')
-    {
-        fflush(stdout);
-    }
+    mQueue.push(msg.data, std::chrono::milliseconds(10));
     return true;
 }
 
@@ -72,4 +67,20 @@ bool UartByPass::excute(const std::vector<std::string>& args)
         }
     }
     return true;
+}
+
+void UartByPass::task()
+{
+    while(mRun)
+    {
+        std::string str;
+        if(mQueue.pop(str, std::chrono::milliseconds(1000)) and str.length())
+        {
+            fwrite(str.c_str(), 1,str.length(), stdout);
+        }
+        if(mQueue.isEmpty())
+        {
+            fflush(stdout);
+        }
+    }
 }
