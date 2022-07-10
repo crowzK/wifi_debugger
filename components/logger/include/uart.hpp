@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <vector>
 #include <thread>
 #include <atomic>
-#include "debug_msg_handler.hpp"
+#include "msg_proxy.hpp"
 #include "task.hpp"
 
 //! For sending message through UART

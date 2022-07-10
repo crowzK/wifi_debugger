@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <mutex>
 #include <string>
 #include <task.hpp>
-#include "debug_msg_handler.hpp"
+#include "msg_proxy.hpp"
 #include "fs_manager.hpp"
 #include "blocking_queue.hpp"
 

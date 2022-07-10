@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <vector>
 #include <mutex>
 #include "web_server.hpp"
-#include "debug_msg_handler.hpp"
+#include "msg_proxy.hpp"
 
 //! For handling index page
 class IndexHandler : public UriHandler
