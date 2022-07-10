@@ -164,7 +164,7 @@ void LogFile::task()
                 auto time = MsgProxy::getTime(msg.time);
                 fwrite(time.c_str(), 1,time.length(), pFile);
             }
-            fwrite(msg.data.data(), 1, msg.data.size(), pFile);
+            fwrite(msg.str.data(), 1, msg.str.size(), pFile);
 
             if(mMsgQueue.isEmpty())
             {

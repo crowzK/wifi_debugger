@@ -45,7 +45,7 @@ UartTx::UartTx(int uartPortNum):
 
 bool UartTx::write(const MsgProxy::Msg& msg)
 {
-    uart_write_bytes(cUartNum, msg.data.data(), msg.data.size());
+    uart_write_bytes(cUartNum, msg.str.data(), msg.str.size());
     return true;
 }
 
@@ -91,9 +91,9 @@ void UartRx::task()
             {
                 MsgProxy::Msg msg;
                 gettimeofday(&msg.time, NULL);
-                msg.data = std::move(_str);
+                msg.str = std::move(_str);
                 msg.strStart = newLine;
-                newLine = msg.data.back() == '\n';
+                newLine = msg.str.back() == '\n';
                 DebugMsgRx::create().write(msg);
             }
         }

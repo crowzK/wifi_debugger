@@ -78,7 +78,7 @@ bool WebLogSender::write(const MsgProxy::Msg& msg)
         str = MsgProxy::getTime(msg.time);
     }
     
-    str += msg.data;
+    str += msg.str;
     ws_pkt.payload = (uint8_t*)str.c_str();
     ws_pkt.len = str.length();
     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
@@ -178,7 +178,7 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
     auto msgs = MsgProxy::convToMsg((char*)tx.data());
     for(auto& msg: msgs)
     {
-        if(msg.data.length() == 0)
+        if(msg.str.length() == 0)
         {
             continue;
         }
@@ -187,7 +187,7 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
             msg.strStart = true;
             mStrStart = false;
         }
-        if(msg.data.back() == '\n')
+        if(msg.str.back() == '\n')
         {
             mStrStart = true;
         }

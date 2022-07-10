@@ -137,7 +137,7 @@ std::vector<MsgProxy::Msg> MsgProxy::convToMsg(char* str)
     gettimeofday(&time, NULL);
     for(auto& _str : strs)
     {
-        msgVector.emplace_back(MsgProxy::Msg{.data = std::move(_str), .strStart = false, .time = time});
+        msgVector.emplace_back(MsgProxy::Msg{.str = std::move(_str), .strStart = false, .time = time});
     }
     return msgVector;
 }
@@ -181,7 +181,7 @@ void DebugMsgRx::task()
     while (mRun) 
     {
         Msg msg;
-        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.data.size())
+        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.size())
         {
             std::lock_guard<std::recursive_mutex> lock(mMutex);
             sendMsg(msg);
@@ -216,7 +216,7 @@ void DebugMsgTx::task()
     while (mRun) 
     {
         Msg msg;
-        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.data.size())
+        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.size())
         {
             std::lock_guard<std::recursive_mutex> lock(mMutex);
             sendMsg(msg);

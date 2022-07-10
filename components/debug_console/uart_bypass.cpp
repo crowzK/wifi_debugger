@@ -32,7 +32,7 @@ UartByPass::UartByPass() :
 
 bool UartByPass::write(const MsgProxy::Msg& msg)
 {
-    mQueue.push(msg.data, std::chrono::milliseconds(10));
+    mQueue.push(msg.str, std::chrono::milliseconds(10));
     return true;
 }
 
@@ -62,7 +62,7 @@ bool UartByPass::excute(const std::vector<std::string>& args)
                 msg.strStart = true;
             }
             gettimeofday(&msg.time, NULL);
-            msg.data = c;
+            msg.str = c;
             DebugMsgTx::create().write(msg);
         }
     }

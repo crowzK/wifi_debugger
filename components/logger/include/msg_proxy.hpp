@@ -36,7 +36,7 @@ class MsgProxy : public Task
 public:
     struct Msg
     {
-        std::string data;
+        std::string str;
         bool strStart;
         struct timeval time;
     };
