@@ -21,8 +21,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <stdint.h>
 #include <vector>
+#include <mutex>
 #include "web_server.hpp"
-#include "debug_msg_handler.hpp"
+#include "msg_proxy.hpp"
 
 //! For handling index page
 class IndexHandler : public UriHandler
@@ -48,7 +49,7 @@ public:
     ~WebLogSender();
 
 protected:
-    bool write(const std::vector<uint8_t>& msg) override;
+    bool writeLine(const MsgProxy::Msg& msg) override;
 };
 
 //! Web sockek handler
@@ -60,6 +61,8 @@ public:
     static WsHandler& create();
 
 protected:
+    std::mutex mMutex;
+
     WsHandler();
     ~WsHandler() = default;
     esp_err_t userHandler(httpd_req *req) override;

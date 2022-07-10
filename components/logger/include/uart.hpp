@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <vector>
 #include <thread>
 #include <atomic>
-#include "debug_msg_handler.hpp"
+#include "msg_proxy.hpp"
 #include "task.hpp"
 
 //! For sending message through UART
@@ -34,7 +34,7 @@ public:
     
 protected:
     const int cUartNum;
-    bool write(const std::vector<uint8_t>& msg) override;
+    bool writeStr(const MsgProxy::Msg& msg) override;
 };
 
 //! For receinv message from the UART

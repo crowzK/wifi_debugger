@@ -24,19 +24,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <string>
 #include "uart.hpp"
 #include "console.hpp"
+#include "task.hpp"
 
 
 //! To by pass uart debug message to the USB CDC
-class UartByPass : public Client, protected Cmd
+class UartByPass : public Client, protected Cmd, protected Task
 {
 public:
     UartByPass();
     ~UartByPass() = default;
 
 protected:
-    bool write(const std::vector<uint8_t>& msg) override;
+    BlockingQueue<std::string> mQueue;
+    bool writeStr(const MsgProxy::Msg& msg) override;
     std::string help();
     bool excute(const std::vector<std::string>& args);
+    void task() override;
 };
 
 #endif

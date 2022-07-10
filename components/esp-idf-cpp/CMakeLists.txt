@@ -1,2 +1,2 @@
-idf_component_register(SRCS "sw_timer.cpp"
+idf_component_register(SRCS "task" "sw_timer.cpp"
                     INCLUDE_DIRS "include")

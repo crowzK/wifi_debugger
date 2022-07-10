@@ -16,18 +16,23 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include <unistd.h>
+#include <stdint.h>
 #include "uart_bypass.hpp"
+#include "esp_log.h"
 
 UartByPass::UartByPass() :
     Client(DebugMsgRx::create(), INT32_MAX - 1),
-    Cmd("uart")
+    Cmd("uart"),
+    Task(__func__),
+    mQueue(20)
 {
-
+    start();
 }
 
-bool UartByPass::write(const std::vector<uint8_t>& msg)
+bool UartByPass::writeStr(const MsgProxy::Msg& msg)
 {
-    printf("%.*s", msg.size(), (char*)msg.data());
+    mQueue.push(msg.str, std::chrono::milliseconds(10));
     return true;
 }
 
@@ -50,14 +55,24 @@ bool UartByPass::excute(const std::vector<std::string>& args)
                 printf("escape cmd enter\n");
                 break;
             }
-            if(c == '\n')
-            {
-                c = '\r';
-            }
-            std::vector<uint8_t> tx;
-            tx.push_back(c);
-            DebugMsgTx::create().write(tx);
+            DebugMsgTx::create().write(&c);
         }
     }
     return true;
+}
+
+void UartByPass::task()
+{
+    while(mRun)
+    {
+        std::string str;
+        if(mQueue.pop(str, std::chrono::milliseconds(1000)) and str.length())
+        {
+            fwrite(str.c_str(), 1,str.length(), stdout);
+        }
+        if(mQueue.isEmpty())
+        {
+            fflush(stdout);
+        }
+    }
 }

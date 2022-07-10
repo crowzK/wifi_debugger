@@ -20,35 +20,47 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #define DEBUG_MSG_HANDLER_HPP
 
 #include <stdint.h>
-#include <vector>
 #include <memory>
 #include <list>
 #include <mutex>
+#include <string>
 #include "blocking_queue.hpp"
 #include "task.hpp"
 
-class MsgProxy;
-
-//! It's a interface class to receive messages from the proxy.
-class Client
-{
-public:
-    const int cId;
-    Client(MsgProxy& debugMsg, int id);
-    virtual ~Client();
-
-    //! \brief proxy will call this write method to deliver message 
-    virtual bool write(const std::vector<uint8_t>& msg) = 0;
-
-protected:
-    MsgProxy& mDebugMsg;
-};
+class Client;
 
 //! debug message proxy
 //! It will help broadcast message to the clients
 class MsgProxy : public Task
 {
 public:
+    static constexpr uint32_t cQueueSize = 100;
+    static constexpr char cStrEnd = '\n';
+
+    struct Msg
+    {
+        std::string str;
+        struct timeval time;
+    
+        void clear()
+        {
+            str.clear();
+        }
+
+        Msg& operator + (const Msg& msg)
+        {
+            this->str += msg.str;
+            return *this;
+        }
+
+        Msg& operator = (const Msg& msg)
+        {
+            this->str = std::move(msg.str);
+            time = msg.time;
+            return *this;
+        }
+    };
+
     //! \brief Add client
     bool addClient(Client& client);
 
@@ -61,10 +73,12 @@ public:
     //! \brief Write message for broadcating
     //! \note it pushes message to the Queue and 
     //! sendMsg() will pop messages form the queue and send its clients
-    bool write(std::vector<uint8_t>& msg);
+    bool write(char* msg);
+
+    static std::string getHeader(const struct timeval& time);
 
 protected:
-    BlockingQueue<std::vector<uint8_t>> mQueue;
+    BlockingQueue<Msg> mQueue;
     std::list<Client*> mClientList;
     std::recursive_mutex mMutex;
 
@@ -73,7 +87,25 @@ protected:
 
     //! \brief send messages to the clients.
     //! \note child class must call this to send data to the clients.  
-    void sendMsg(const std::vector<uint8_t>&msg);
+    void sendLine(const Msg& msg);
+    void sendStr(const Msg& msg);
+};
+
+//! It's a interface class to receive messages from the proxy.
+class Client
+{
+public:
+    const int cId;
+    Client(MsgProxy& debugMsg, int id);
+    virtual ~Client();
+
+    //! \brief proxy will call this write method to deliver message 
+    virtual bool writeLine(const MsgProxy::Msg& msg) { return true; };
+
+    virtual bool writeStr(const MsgProxy::Msg& msg) { return true; };
+
+protected:
+    MsgProxy& mDebugMsg;
 };
 
 //! It will handle the messages from the UART
@@ -83,9 +115,10 @@ public:
     static DebugMsgRx& create();
 
 protected:
+    Msg mLine;
+
     DebugMsgRx();
     ~DebugMsgRx();
-    void getTime(std::vector<uint8_t>& msg);
     void task() override;
 };
 
