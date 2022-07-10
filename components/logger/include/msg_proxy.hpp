@@ -75,7 +75,7 @@ public:
     //! sendMsg() will pop messages form the queue and send its clients
     bool write(char* msg);
 
-    static std::string getTime(const struct timeval& time);
+    static std::string getHeader(const struct timeval& time);
 
 protected:
     BlockingQueue<Msg> mQueue;

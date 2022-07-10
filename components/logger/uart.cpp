@@ -100,7 +100,7 @@ UartService& UartService::create()
 }
 
 UartService::UartService() :
-    mConfig{.baudRate = 1500000, .uartNum = 1}
+    mConfig{.baudRate = 230400, .uartNum = 1}
 {
     init(mConfig);
 }

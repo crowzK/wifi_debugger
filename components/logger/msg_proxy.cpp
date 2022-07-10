@@ -134,7 +134,7 @@ void MsgProxy::sendStr(const Msg& msg)
     }
 }
 
-std::string MsgProxy::getTime(const struct timeval& time)
+std::string MsgProxy::getHeader(const struct timeval& time)
 {
     std::time_t t = time.tv_sec;
     tm local = *localtime(&t);
@@ -180,7 +180,7 @@ void DebugMsgRx::task()
                 if(mLine.str.length() == 0)
                 {
                     mLine = msg;
-                    mLine.str = getTime(mLine.time);
+                    mLine.str = getHeader(mLine.time);
                 }
                 const char& ch = msg.str[i];
                 mLine.str += ch;
