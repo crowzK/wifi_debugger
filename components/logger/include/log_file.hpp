@@ -57,7 +57,7 @@ protected:
 
     //! \brief Write a mesage to the SD card
     //! \param msg message vector
-    bool write(const MsgProxy::Msg& msg) override;
+    bool writeLine(const MsgProxy::Msg& msg) override;
 
     void task() override;
 };

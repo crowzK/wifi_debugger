@@ -36,7 +36,7 @@ public:
 
 protected:
     BlockingQueue<std::string> mQueue;
-    bool write(const MsgProxy::Msg& msg) override;
+    bool writeStr(const MsgProxy::Msg& msg) override;
     std::string help();
     bool excute(const std::vector<std::string>& args);
     void task() override;

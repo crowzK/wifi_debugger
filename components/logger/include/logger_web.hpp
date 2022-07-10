@@ -49,7 +49,7 @@ public:
     ~WebLogSender();
 
 protected:
-    bool write(const MsgProxy::Msg& msg) override;
+    bool writeLine(const MsgProxy::Msg& msg) override;
 };
 
 //! Web sockek handler
@@ -62,7 +62,6 @@ public:
 
 protected:
     std::mutex mMutex;
-    bool mStrStart;
 
     WsHandler();
     ~WsHandler() = default;

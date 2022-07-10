@@ -127,7 +127,7 @@ FILE* LogFile::createFile()
     return fopen(mFilePath.c_str(), "w");
 }
 
-bool LogFile::write(const MsgProxy::Msg& msg)
+bool LogFile::writeLine(const MsgProxy::Msg& msg)
 {
     mMsgQueue.push(msg, 0ms);
     return true;
@@ -158,11 +158,6 @@ void LogFile::task()
             if(pFile == nullptr)
             {
                 continue;
-            }
-            if(msg.strStart)
-            {
-                auto time = MsgProxy::getTime(msg.time);
-                fwrite(time.c_str(), 1,time.length(), pFile);
             }
             fwrite(msg.str.data(), 1, msg.str.size(), pFile);
 

@@ -69,18 +69,12 @@ WebLogSender::~WebLogSender()
 
 }
 
-bool WebLogSender::write(const MsgProxy::Msg& msg)
+bool WebLogSender::writeLine(const MsgProxy::Msg& msg)
 {
     httpd_ws_frame_t ws_pkt = {};
-    std::string str;
-    if(msg.strStart)
-    {
-        str = MsgProxy::getTime(msg.time);
-    }
-    
-    str += msg.str;
-    ws_pkt.payload = (uint8_t*)str.c_str();
-    ws_pkt.len = str.length();
+
+    ws_pkt.payload = (uint8_t*)msg.str.c_str();
+    ws_pkt.len = msg.str.length();
     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
 
     if(httpd_ws_send_frame_async(hd, fd, &ws_pkt) != ESP_OK)
@@ -101,8 +95,7 @@ WsHandler& WsHandler::create()
 }
 
 WsHandler::WsHandler() :
-    UriHandler("/ws", HTTP_GET, true),
-    mStrStart(true)
+    UriHandler("/ws", HTTP_GET, true)
 {
 }
 
@@ -119,6 +112,7 @@ static std::string string_to_hex(const std::string& input)
     }
     return output;
 }
+
 esp_err_t WsHandler::userHandler(httpd_req *req)
 {
     std::unique_lock<std::mutex> lock(mMutex);
@@ -181,15 +175,6 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
         if(msg.str.length() == 0)
         {
             continue;
-        }
-        if(mStrStart)
-        {
-            msg.strStart = true;
-            mStrStart = false;
-        }
-        if(msg.str.back() == '\n')
-        {
-            mStrStart = true;
         }
         DebugMsgTx::create().write(msg);
     }

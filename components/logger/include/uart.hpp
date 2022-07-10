@@ -34,7 +34,7 @@ public:
     
 protected:
     const int cUartNum;
-    bool write(const MsgProxy::Msg& msg) override;
+    bool writeStr(const MsgProxy::Msg& msg) override;
 };
 
 //! For receinv message from the UART

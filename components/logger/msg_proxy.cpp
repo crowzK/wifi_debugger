@@ -42,10 +42,9 @@ Client::~Client()
 //-------------------------------------------------------------------
 // MsgProxy
 //-------------------------------------------------------------------
-
 MsgProxy::MsgProxy(const char* cName) :
     Task(cName),
-    mQueue(20)
+    mQueue(cQueueSize)
 {
 }
 
@@ -90,7 +89,7 @@ bool MsgProxy::write(Msg& msg)
     return mQueue.push(msg, std::chrono::milliseconds(100));
 }
 
-void MsgProxy::sendMsg(const Msg& msg)
+void MsgProxy::sendLine(const Msg& msg)
 {  
     std::list<Client*> erase;
     for(auto it = mClientList.begin(); it != mClientList.end(); ++it)
@@ -99,7 +98,28 @@ void MsgProxy::sendMsg(const Msg& msg)
         {
             continue;
         }
-        if((*it)->write(msg) == false)
+        if((*it)->writeLine(msg) == false)
+        {
+            erase.push_back(*it);
+        }
+    }
+
+    for(auto it = erase.begin(); it != erase.end(); ++it)
+    {
+        delete *it;
+    }
+}
+
+void MsgProxy::sendStr(const Msg& msg)
+{
+    std::list<Client*> erase;
+    for(auto it = mClientList.begin(); it != mClientList.end(); ++it)
+    {
+        if(*it == nullptr)
+        {
+            continue;
+        }
+        if((*it)->writeStr(msg) == false)
         {
             erase.push_back(*it);
         }
@@ -137,7 +157,7 @@ std::vector<MsgProxy::Msg> MsgProxy::convToMsg(char* str)
     gettimeofday(&time, NULL);
     for(auto& _str : strs)
     {
-        msgVector.emplace_back(MsgProxy::Msg{.str = std::move(_str), .strStart = false, .time = time});
+        msgVector.emplace_back(MsgProxy::Msg{.str = std::move(_str), .time = time});
     }
     return msgVector;
 }
@@ -181,10 +201,25 @@ void DebugMsgRx::task()
     while (mRun) 
     {
         Msg msg;
-        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.size())
+        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.length())
         {
-            std::lock_guard<std::recursive_mutex> lock(mMutex);
-            sendMsg(msg);
+            sendStr(msg);
+            for(int i = 0; i < msg.str.length(); i ++)
+            {
+                if(mLine.str.length() == 0)
+                {
+                    mLine = msg;
+                    mLine.str = getTime(mLine.time);
+                }
+                const char& ch = msg.str[i];
+                mLine.str += ch;
+                if(ch == cStrEnd)
+                {
+                    std::lock_guard<std::recursive_mutex> lock(mMutex);
+                    sendLine(mLine);
+                    mLine.clear();
+                }    
+            }
         }
     }
 }
@@ -219,7 +254,7 @@ void DebugMsgTx::task()
         if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.size())
         {
             std::lock_guard<std::recursive_mutex> lock(mMutex);
-            sendMsg(msg);
+            sendStr(msg);
         }
     }
 }

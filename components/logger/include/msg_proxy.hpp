@@ -34,11 +34,31 @@ class Client;
 class MsgProxy : public Task
 {
 public:
+    static constexpr uint32_t cQueueSize = 100;
+    static constexpr char cStrEnd = '\n';
+
     struct Msg
     {
         std::string str;
-        bool strStart;
         struct timeval time;
+    
+        void clear()
+        {
+            str.clear();
+        }
+
+        Msg& operator + (const Msg& msg)
+        {
+            this->str += msg.str;
+            return *this;
+        }
+
+        Msg& operator = (const Msg& msg)
+        {
+            this->str = std::move(msg.str);
+            time = msg.time;
+            return *this;
+        }
     };
 
     //! \brief Add client
@@ -70,7 +90,8 @@ protected:
 
     //! \brief send messages to the clients.
     //! \note child class must call this to send data to the clients.  
-    void sendMsg(const Msg& msg);
+    void sendLine(const Msg& msg);
+    void sendStr(const Msg& msg);
 };
 
 //! It's a interface class to receive messages from the proxy.
@@ -82,7 +103,9 @@ public:
     virtual ~Client();
 
     //! \brief proxy will call this write method to deliver message 
-    virtual bool write(const MsgProxy::Msg& msg) = 0;
+    virtual bool writeLine(const MsgProxy::Msg& msg) { return true; };
+
+    virtual bool writeStr(const MsgProxy::Msg& msg) { return true; };
 
 protected:
     MsgProxy& mDebugMsg;
@@ -95,6 +118,8 @@ public:
     static DebugMsgRx& create();
 
 protected:
+    Msg mLine;
+
     DebugMsgRx();
     ~DebugMsgRx();
     void task() override;

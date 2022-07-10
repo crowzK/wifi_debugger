@@ -43,9 +43,9 @@ UartTx::UartTx(int uartPortNum):
 {
 }
 
-bool UartTx::write(const MsgProxy::Msg& msg)
+bool UartTx::writeStr(const MsgProxy::Msg& msg)
 {
-    uart_write_bytes(cUartNum, msg.str.data(), msg.str.size());
+    uart_write_bytes(cUartNum, msg.str.c_str(), msg.str.length());
     return true;
 }
 
@@ -76,12 +76,11 @@ std::string string_to_hex(const std::string& input)
 void UartRx::task()
 {
     char buffer[RX_BUF_SIZE + 1];
-    bool newLine = true;
     while(mRun)
     {
         std::vector<uint8_t> rcvBuffer;
         rcvBuffer.resize(RX_BUF_SIZE + 1);
-        const int rxBytes = uart_read_bytes(cUartNum, buffer, RX_BUF_SIZE, 10);
+        const int rxBytes = uart_read_bytes(cUartNum, buffer, RX_BUF_SIZE, 1);
         if(rxBytes)
         {
             buffer[rxBytes] = 0;
@@ -92,8 +91,6 @@ void UartRx::task()
                 MsgProxy::Msg msg;
                 gettimeofday(&msg.time, NULL);
                 msg.str = std::move(_str);
-                msg.strStart = newLine;
-                newLine = msg.str.back() == '\n';
                 DebugMsgRx::create().write(msg);
             }
         }
