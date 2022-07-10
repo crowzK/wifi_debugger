@@ -73,10 +73,7 @@ public:
     //! \brief Write message for broadcating
     //! \note it pushes message to the Queue and 
     //! sendMsg() will pop messages form the queue and send its clients
-    bool write(Msg& msg);
-
-    static std::vector<std::string> split(const std::string& cmd);
-    static std::vector<Msg> convToMsg(char* str);
+    bool write(char* msg);
 
     static std::string getTime(const struct timeval& time);
 

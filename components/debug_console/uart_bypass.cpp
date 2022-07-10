@@ -55,10 +55,7 @@ bool UartByPass::excute(const std::vector<std::string>& args)
                 printf("escape cmd enter\n");
                 break;
             }
-            MsgProxy::Msg msg{};
-            gettimeofday(&msg.time, NULL);
-            msg.str = c;
-            DebugMsgTx::create().write(msg);
+            DebugMsgTx::create().write(&c);
         }
     }
     return true;

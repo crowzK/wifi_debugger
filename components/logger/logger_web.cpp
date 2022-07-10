@@ -169,15 +169,6 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
         return ret;
     }
     tx[ws_pkt.len] = 0;
-    auto msgs = MsgProxy::convToMsg((char*)tx.data());
-    for(auto& msg: msgs)
-    {
-        if(msg.str.length() == 0)
-        {
-            continue;
-        }
-        DebugMsgTx::create().write(msg);
-    }
-
+    DebugMsgTx::create().write((char*) tx.data());
     return ret;
 }

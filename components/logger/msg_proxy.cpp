@@ -84,9 +84,12 @@ bool MsgProxy::isAdded(int id)
     return it != mClientList.end();
 }
 
-bool MsgProxy::write(Msg& msg)
+bool MsgProxy::write(char* msg)
 {
-    return mQueue.push(msg, std::chrono::milliseconds(100));
+    Msg _msg;
+    gettimeofday(&_msg.time, NULL);
+    _msg.str = std::string(msg);
+    return mQueue.push(_msg, std::chrono::milliseconds(100));
 }
 
 void MsgProxy::sendLine(const Msg& msg)
@@ -131,37 +134,6 @@ void MsgProxy::sendStr(const Msg& msg)
     }
 }
 
-std::vector<std::string> MsgProxy::split(const std::string& cmd)
-{
-	std::string _cmd = std::regex_replace(cmd, std::regex("\r\n"), "\n");
-	_cmd = std::regex_replace(_cmd, std::regex("\n\r"), "\n");
-	_cmd = std::regex_replace(_cmd, std::regex("\r"), "\n");
-	_cmd = std::regex_replace(_cmd, std::regex("\n"), "\r\n");
-    std::istringstream iss(_cmd);
-    std::string buffer;
-
-    std::vector<std::string> result;
-    while (std::getline(iss, buffer, '\r')) 
-    {
-        result.push_back(buffer);
-    }
-
-    return result;
-}
-
-std::vector<MsgProxy::Msg> MsgProxy::convToMsg(char* str)
-{
-    std::vector<MsgProxy::Msg> msgVector;
-    auto strs = split(std::string(str));
-    struct timeval time;
-    gettimeofday(&time, NULL);
-    for(auto& _str : strs)
-    {
-        msgVector.emplace_back(MsgProxy::Msg{.str = std::move(_str), .time = time});
-    }
-    return msgVector;
-}
-
 std::string MsgProxy::getTime(const struct timeval& time)
 {
     std::time_t t = time.tv_sec;
@@ -172,7 +144,6 @@ std::string MsgProxy::getTime(const struct timeval& time)
     sprintf(str, "[%02dT%02d:%02d:%02d:%03d] ", local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec, ms);
     return std::string(str);
 }
-
 
 //-------------------------------------------------------------------
 // DebugMsgRx

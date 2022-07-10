@@ -84,15 +84,7 @@ void UartRx::task()
         if(rxBytes)
         {
             buffer[rxBytes] = 0;
-            std::string str(buffer);
-            auto strs = MsgProxy::split(str);
-            for(auto& _str: strs)
-            {
-                MsgProxy::Msg msg;
-                gettimeofday(&msg.time, NULL);
-                msg.str = std::move(_str);
-                DebugMsgRx::create().write(msg);
-            }
+            DebugMsgRx::create().write(buffer);
         }
     }
 }
