@@ -20,7 +20,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <stdio_ext.h>
 #include <string.h>
 #include "esp_log.h"
-#include "esp_console.h"
 #include "argtable3/argtable3.h"
 #include "esp_wifi.h"
 #include "esp_netif.h"
