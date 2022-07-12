@@ -92,6 +92,39 @@ void UartRx::task()
 //-------------------------------------------------------------------
 // UartService
 //-------------------------------------------------------------------
+UartOptionCmd::UartOptionCmd() :
+    Cmd("uart_option")
+{
+
+}
+
+bool UartOptionCmd::excute(const std::vector<std::string>& args)
+{
+    UartService& srv = UartService::create();
+    if(args.size() == 1)
+    {
+        printf("baud rate: %d\n", srv.getCfg().baudRate);
+    }
+    else if(args.size() == 2)
+    {
+        int baud = std::atoi(args.at(1).c_str());
+        srv.init(UartService::Config{.baudRate = baud, .uartNum = srv.getCfg().uartNum});
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+
+std::string UartOptionCmd::help()
+{
+    return std::string("uart_option <baudrate>");
+}
+
+//-------------------------------------------------------------------
+// UartService
+//-------------------------------------------------------------------
 
 UartService& UartService::create()
 {

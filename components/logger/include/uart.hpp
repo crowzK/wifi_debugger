@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <atomic>
 #include "msg_proxy.hpp"
 #include "task.hpp"
+#include "console.hpp"
 
 //! For sending message through UART
 class UartTx : public Client
@@ -48,6 +49,18 @@ protected:
     const int cUartNum;
     void task() override;
 };
+
+class UartOptionCmd : protected Cmd
+{
+public:
+    UartOptionCmd();
+    ~UartOptionCmd() = default;
+
+private:
+    bool excute(const std::vector<std::string>& args) override;
+    std::string help() override;
+};
+
 
 //! For send/recv message through UART
 class UartService
@@ -78,8 +91,10 @@ protected:
     Config mConfig;
     std::unique_ptr<UartRx> pUartRx;
     std::unique_ptr<UartTx> pUartTx;
+    UartOptionCmd mOption;
 
     UartService();
 };
+
 
 #endif //UASRT_HPP

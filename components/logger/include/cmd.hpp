@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <string>
 #include <vector>
 
-class Cmd
+class WebCmd
 {
 public:
     enum class Type : uint8_t
@@ -37,9 +37,9 @@ public:
         eUartSetting = 1,
         eInvalid,
     };
-    Cmd(Type, SubCmd);
-    Cmd(uint8_t* buffer, uint32_t size);
-    ~Cmd() = default;
+    WebCmd(Type, SubCmd);
+    WebCmd(uint8_t* buffer, uint32_t size);
+    ~WebCmd() = default;
 
     Type getCmdType() const { return cType; };
     SubCmd getSubCmd() const { return cSubCmd; }
@@ -51,7 +51,7 @@ protected:
     std::string mCmd;
 };
 
-class UartSetting : public Cmd
+class UartSetting : public WebCmd
 {
 public:
     UartSetting(int baudrate, int port);
