@@ -16,20 +16,32 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "setting.hpp"
-#include <esp_log.h>
-#include "nvs_flash.h"
-#include "nvs.h"
-#include "nvs_handle.hpp"
+#ifndef OPTION_HPP
+#define OPTION_HPP
 
-Setting& Setting::create()
+#include <memory>
+
+namespace nvs
 {
-    static Setting setting;
-    return setting;
+    class NVSHandle;
 }
 
-Setting::Setting()
+class Setting
 {
+public:
+    static Setting& create();
 
-}
+    uint32_t getDebugUartBaud() const;
+    void setDebugUartBaud(uint32_t baudrate) const;
 
+protected:
+    static constexpr uint32_t cDefaultBaud = 230400;
+    std::shared_ptr<nvs::NVSHandle> mHandle;
+
+    Setting();
+    ~Setting();
+};
+
+
+
+#endif // OPTION_HPP

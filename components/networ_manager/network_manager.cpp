@@ -26,9 +26,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_event.h"
 #include "esp_system.h"
 #include "network_manager.hpp"
-#include "nvs.h"
-#include "nvs_flash.h"
 #include "status.hpp"
+#include "setting.hpp"
 
 static const char *TAG = "NetworkManager";
 
@@ -110,17 +109,8 @@ bool NetworkManager::init()
 {
     std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
 
-    /* Initialize NVS partition */
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        /* NVS partition was truncated
-         * and needs to be erased */
-        ESP_ERROR_CHECK(nvs_flash_erase());
-
-        /* Retry nvs_flash_init */
-        ESP_ERROR_CHECK(nvs_flash_init());
-    }
+    // to init nvs
+    Setting::create();
 
     /* Initialize TCP/IP */
     ESP_ERROR_CHECK(esp_netif_init());

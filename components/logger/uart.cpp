@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "uart.hpp"
 
 #include "blocking_queue.hpp"
+#include "setting.hpp"
 
 static const int RX_BUF_SIZE = 1024;
 
@@ -109,6 +110,7 @@ bool UartOptionCmd::excute(const std::vector<std::string>& args)
     {
         int baud = std::atoi(args.at(1).c_str());
         srv.init(UartService::Config{.baudRate = baud, .uartNum = srv.getCfg().uartNum});
+        Setting::create().setDebugUartBaud((uint32_t)baud);
     }
     else
     {
@@ -133,7 +135,7 @@ UartService& UartService::create()
 }
 
 UartService::UartService() :
-    mConfig{.baudRate = 230400, .uartNum = 1}
+    mConfig{.baudRate = (int)Setting::create().getDebugUartBaud(), .uartNum = 1}
 {
     init(mConfig);
 }
