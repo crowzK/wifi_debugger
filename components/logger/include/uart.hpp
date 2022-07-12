@@ -50,11 +50,11 @@ protected:
     void task() override;
 };
 
-class UartOptionCmd : protected Cmd
+class SettingCmd : protected Cmd
 {
 public:
-    UartOptionCmd();
-    ~UartOptionCmd() = default;
+    SettingCmd();
+    ~SettingCmd() = default;
 
 private:
     bool excute(const std::vector<std::string>& args) override;
@@ -91,7 +91,7 @@ protected:
     Config mConfig;
     std::unique_ptr<UartRx> pUartRx;
     std::unique_ptr<UartTx> pUartTx;
-    UartOptionCmd mOption;
+    SettingCmd mOption;
 
     UartService();
 };

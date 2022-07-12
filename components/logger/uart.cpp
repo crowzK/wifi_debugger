@@ -93,13 +93,13 @@ void UartRx::task()
 //-------------------------------------------------------------------
 // UartService
 //-------------------------------------------------------------------
-UartOptionCmd::UartOptionCmd() :
-    Cmd("uart_option")
+SettingCmd::SettingCmd() :
+    Cmd("setting")
 {
 
 }
 
-bool UartOptionCmd::excute(const std::vector<std::string>& args)
+bool SettingCmd::excute(const std::vector<std::string>& args)
 {
     UartService& srv = UartService::create();
     if(args.size() == 1)
@@ -119,9 +119,9 @@ bool UartOptionCmd::excute(const std::vector<std::string>& args)
     return true;
 }
 
-std::string UartOptionCmd::help()
+std::string SettingCmd::help()
 {
-    return std::string("uart_option <baudrate>");
+    return std::string(cCmd) + std::string(" <baudrate>");
 }
 
 //-------------------------------------------------------------------
