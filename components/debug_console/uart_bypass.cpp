@@ -47,15 +47,15 @@ bool UartByPass::excute(const std::vector<std::string>& args)
     printf("Enter usb-uart mode press ctrl+B if you want to exit\n");
     while(1)
     {
-        char c;
-        if(read(stdin_fileno, &c, 1))
+        char str[2] = {};
+        if(read(stdin_fileno, str, 1))
         {
-            if(c == 2)
+            if(str[0] == 2)
             {
                 printf("escape cmd enter\n");
                 break;
             }
-            DebugMsgTx::create().write(&c);
+            DebugMsgTx::create().write(str);
         }
     }
     return true;
