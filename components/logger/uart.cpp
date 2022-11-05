@@ -31,6 +31,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "uart.hpp"
 
 #include "blocking_queue.hpp"
+#include "setting.hpp"
 
 static const int RX_BUF_SIZE = 1024;
 
@@ -92,6 +93,40 @@ void UartRx::task()
 //-------------------------------------------------------------------
 // UartService
 //-------------------------------------------------------------------
+SettingCmd::SettingCmd() :
+    Cmd("setting")
+{
+
+}
+
+bool SettingCmd::excute(const std::vector<std::string>& args)
+{
+    UartService& srv = UartService::create();
+    if(args.size() == 1)
+    {
+        printf("baud rate: %d\n", srv.getCfg().baudRate);
+    }
+    else if(args.size() == 2)
+    {
+        int baud = std::atoi(args.at(1).c_str());
+        srv.init(UartService::Config{.baudRate = baud, .uartNum = srv.getCfg().uartNum});
+        Setting::create().setDebugUartBaud((uint32_t)baud);
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+
+std::string SettingCmd::help()
+{
+    return std::string(cCmd) + std::string(" <baudrate>");
+}
+
+//-------------------------------------------------------------------
+// UartService
+//-------------------------------------------------------------------
 
 UartService& UartService::create()
 {
@@ -100,7 +135,7 @@ UartService& UartService::create()
 }
 
 UartService::UartService() :
-    mConfig{.baudRate = 230400, .uartNum = 1}
+    mConfig{.baudRate = (int)Setting::create().getDebugUartBaud(), .uartNum = 1}
 {
     init(mConfig);
 }

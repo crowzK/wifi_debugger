@@ -21,6 +21,5 @@ idf_component_register(
     SRC_DIRS "${src_dirs}"
     EXCLUDE_SRCS "${exclude_srcs}"
     INCLUDE_DIRS "${include_dirs}" 
-    PRIV_REQUIRES main
 )
 

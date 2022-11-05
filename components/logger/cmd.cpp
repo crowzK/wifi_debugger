@@ -22,14 +22,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "status.hpp"
 #include "fs_manager.hpp"
 
-Cmd::Cmd(Type type, SubCmd subCmd) :
+WebCmd::WebCmd(Type type, SubCmd subCmd) :
     cType(type),
     cSubCmd(subCmd)
 {
 
 }
 
-Cmd::Cmd(uint8_t* buffer, uint32_t size) :
+WebCmd::WebCmd(uint8_t* buffer, uint32_t size) :
     cType(buffer[0] == (uint8_t)Type::eClientToSever ? Type::eClientToSever :
             buffer[0] == (uint8_t)Type::eServerToClient ? Type::eServerToClient :
             Type::eInvalid),
@@ -40,7 +40,7 @@ Cmd::Cmd(uint8_t* buffer, uint32_t size) :
         mCmd = std::string((char*)(buffer + 2));
     }
 }
-std::vector<uint8_t> Cmd::getCmd()
+std::vector<uint8_t> WebCmd::getCmd()
 {
     std::vector<uint8_t> cmd;
     cmd.push_back((uint8_t)cType);
@@ -54,7 +54,7 @@ std::vector<uint8_t> Cmd::getCmd()
 }
 
 UartSetting::UartSetting(int baudrate, int port) :
-    Cmd(Type::eServerToClient, SubCmd::eUartSetting)
+    WebCmd(Type::eServerToClient, SubCmd::eUartSetting)
 {
     std::string uart = FsManager::create().isMount() ? "SD Okay": "SD Error";
     std::ostringstream cmd;

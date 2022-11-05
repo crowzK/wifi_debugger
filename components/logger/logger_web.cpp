@@ -141,12 +141,12 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
         return ret;
     }
 
-    Cmd cmd(tx.data(), ws_pkt.len);
-    if(cmd.getCmdType() == Cmd::Type::eClientToSever)
+    WebCmd cmd(tx.data(), ws_pkt.len);
+    if(cmd.getCmdType() == WebCmd::Type::eClientToSever)
     {
         switch(cmd.getSubCmd())
         {
-        case Cmd::SubCmd::eUartSetting:
+        case WebCmd::SubCmd::eUartSetting:
         {
             const auto cfg = UartService::create().getCfg();
             UartSetting setting(cfg.baudRate, cfg.uartNum);
