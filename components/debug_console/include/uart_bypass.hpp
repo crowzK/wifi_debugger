@@ -26,6 +26,28 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "console.hpp"
 #include "task.hpp"
 
+class LineEndMap : protected Cmd
+{
+public:
+    enum Map
+    {
+        eCrLf,
+        eCrCrLf,
+        eLfCr,
+        eLfCrLf,
+    };
+
+    LineEndMap();
+    ~LineEndMap();
+    Map getMap() { return mLineEndMap; }
+
+protected:
+    Map mLineEndMap;
+    std::string mLineEndMapStr;
+    std::string help() override;
+    bool setLineEnd(const std::string& str);
+    bool excute(const std::vector<std::string>& args) override;
+};
 
 //! To by pass uart debug message to the USB CDC
 class UartByPass : public Client, protected Cmd, protected Task
@@ -36,6 +58,8 @@ public:
 
 protected:
     BlockingQueue<std::string> mQueue;
+    LineEndMap mLineEndMode;
+
     bool writeStr(const MsgProxy::Msg& msg) override;
     std::string help();
     bool excute(const std::vector<std::string>& args);
