@@ -50,6 +50,26 @@ void Setting::setDebugUartBaud(uint32_t baudrate) const
     ESP_LOGI(TAG, "%s", (err != ESP_OK) ? "Failed!\n" : "Done\n");
 }
 
+uint32_t Setting::getLienEnd() const
+{
+    esp_err_t err;
+    uint32_t lineEnd;
+    err = mHandle->get_item("lien_end", lineEnd);
+    if((lineEnd == 0) or (err != ESP_OK))
+    {
+        lineEnd = cDefaultLienEnd;
+        setLienEnd(lineEnd);
+    }
+    return lineEnd;
+}
+
+void Setting::setLienEnd(uint32_t lineEnd) const
+{
+    esp_err_t err;
+    err = mHandle->set_item("lien_end", lineEnd);
+    ESP_LOGI(TAG, "%s", (err != ESP_OK) ? "Failed!\n" : "Done\n");
+}
+
 Setting::Setting()
 {
     /* Initialize NVS partition */

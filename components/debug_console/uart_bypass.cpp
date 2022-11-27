@@ -20,7 +20,89 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <stdint.h>
 #include "uart_bypass.hpp"
 #include "esp_log.h"
+#include "setting.hpp"
 
+//-------------------------------------------------------------------
+// LineEndMap
+//-------------------------------------------------------------------
+LineEndMap::LineEndMap() :
+    Cmd("omap")
+{
+    mLineEndMap = (Map)Setting::create().getLienEnd();
+}
+
+LineEndMap::~LineEndMap()
+{
+
+}
+
+std::string LineEndMap::help()
+{
+    return std::string("UART output mamping `crlf`: cr -> lf, `lfcr` lf -> cr, `crcrlf` -> cr -> crlf");
+}
+
+bool LineEndMap::setLineEnd(const std::string& str)
+{
+    if(str == std::string("crlf"))
+    {
+        mLineEndMap = Map::eCrLf;
+    }
+    else if(str == std::string("lfcr"))
+    {
+        mLineEndMap = Map::eLfCr;
+    }
+    else if(str == std::string("crcrlf"))
+    {
+        mLineEndMap = Map::eCrCrLf;
+    }
+    else if(str == std::string("lfcrlf"))
+    {
+        mLineEndMap = Map::eLfCrLf;
+    }
+    else
+    {
+        return false;
+    }
+    Setting::create().setLienEnd(mLineEndMap);
+    printf("%s: %s\n", __func__, getLineEndStr(mLineEndMap).c_str());
+    return true;
+}
+
+bool LineEndMap::excute(const std::vector<std::string>& args)
+{
+    if(args.size() == 1)
+    {
+        printf("CurrentMode: %s\n", getLineEndStr(mLineEndMap).c_str());
+    }
+    else if(args.size() == 2)
+    {
+        return setLineEnd(args.at(1));
+    }
+    else
+    {
+        return false;
+    }
+    return true;
+}
+std::string LineEndMap::getLineEndStr(Map map)
+{
+    switch (map)
+    {
+    default:
+    case LineEndMap::eCrLf:
+        return "crlf";
+    case LineEndMap::eCrCrLf:
+        return "crcrlf";
+    case LineEndMap::eLfCr:
+        return "lfcr";
+    case LineEndMap::eLfCrLf:
+        return "lfcrlf";
+    }
+}
+
+//-------------------------------------------------------------------
+// UartByPass
+//-------------------------------------------------------------------
 UartByPass::UartByPass() :
     Client(DebugMsgRx::create(), INT32_MAX - 1),
     Cmd("uart"),
@@ -47,12 +129,42 @@ bool UartByPass::excute(const std::vector<std::string>& args)
     printf("Enter usb-uart mode press ctrl+B if you want to exit\n");
     while(1)
     {
-        char str[2] = {};
+        char str[3] = {};
         if(read(stdin_fileno, str, 1))
         {
             if(str[0] == 2)
             {
                 printf("escape cmd enter\n");
+                break;
+            }
+            switch (mLineEndMode.getMap())
+            {
+            default:
+            case LineEndMap::eCrLf:
+                if(str[0] == '\r')
+                {
+                    str[0] = '\n';
+                }
+                break;
+            case LineEndMap::eCrCrLf:
+                if(str[0] == '\r')
+                {
+                    str[0] = '\r';
+                    str[1] = '\n';
+                }
+                break;
+            case LineEndMap::eLfCr:
+                if(str[0] == '\n')
+                {
+                    str[0] = '\r';
+                }
+                break;
+            case LineEndMap::eLfCrLf:
+                if(str[0] == '\n')
+                {
+                    str[0] = '\r';
+                    str[1] = '\n';
+                }
                 break;
             }
             DebugMsgTx::create().write(str);

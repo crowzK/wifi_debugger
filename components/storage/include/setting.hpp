@@ -33,9 +33,12 @@ public:
 
     uint32_t getDebugUartBaud() const;
     void setDebugUartBaud(uint32_t baudrate) const;
+    uint32_t getLienEnd() const;
+    void setLienEnd(uint32_t lineEnd) const;
 
 protected:
     static constexpr uint32_t cDefaultBaud = 230400;
+    static constexpr uint32_t cDefaultLienEnd = 3; // default lfcr
     std::shared_ptr<nvs::NVSHandle> mHandle;
 
     Setting();
