@@ -31,7 +31,7 @@ class LineEndMap : protected Cmd
 public:
     enum Map
     {
-        eCrLf,
+        eCrLf = 1,
         eCrCrLf,
         eLfCr,
         eLfCrLf,
@@ -43,10 +43,10 @@ public:
 
 protected:
     Map mLineEndMap;
-    std::string mLineEndMapStr;
     std::string help() override;
     bool setLineEnd(const std::string& str);
     bool excute(const std::vector<std::string>& args) override;
+    std::string getLineEndStr(Map map);
 };
 
 //! To by pass uart debug message to the USB CDC

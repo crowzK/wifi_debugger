@@ -20,17 +20,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <stdint.h>
 #include "uart_bypass.hpp"
 #include "esp_log.h"
-
+#include "setting.hpp"
 
 //-------------------------------------------------------------------
 // LineEndMap
 //-------------------------------------------------------------------
 LineEndMap::LineEndMap() :
-    Cmd("omap"),
-    mLineEndMapStr("lfcr")
+    Cmd("omap")
 {
-    setLineEnd(mLineEndMapStr);
+    mLineEndMap = (Map)Setting::create().getLienEnd();
 }
+
 LineEndMap::~LineEndMap()
 {
 
@@ -63,8 +63,8 @@ bool LineEndMap::setLineEnd(const std::string& str)
     {
         return false;
     }
-    mLineEndMapStr = str.c_str();
-    printf("%s: %s\n", __func__, mLineEndMapStr.c_str());
+    Setting::create().setLienEnd(mLineEndMap);
+    printf("%s: %s\n", __func__, getLineEndStr(mLineEndMap).c_str());
     return true;
 }
 
@@ -72,7 +72,7 @@ bool LineEndMap::excute(const std::vector<std::string>& args)
 {
     if(args.size() == 1)
     {
-        printf("CurrentMode: %s\n", mLineEndMapStr.c_str());
+        printf("CurrentMode: %s\n", getLineEndStr(mLineEndMap).c_str());
     }
     else if(args.size() == 2)
     {
@@ -83,6 +83,21 @@ bool LineEndMap::excute(const std::vector<std::string>& args)
         return false;
     }
     return true;
+}
+std::string LineEndMap::getLineEndStr(Map map)
+{
+    switch (map)
+    {
+    default:
+    case LineEndMap::eCrLf:
+        return "crlf";
+    case LineEndMap::eCrCrLf:
+        return "crcrlf";
+    case LineEndMap::eLfCr:
+        return "lfcr";
+    case LineEndMap::eLfCrLf:
+        return "lfcrlf";
+    }
 }
 
 //-------------------------------------------------------------------
