@@ -147,7 +147,7 @@ std::vector<std::string> Console::split(const std::string& cmd)
 
     std::vector<std::string> result;
 
-    while (std::getline(iss, buffer, ' ')) 
+    while (std::getline(iss, buffer, '#')) 
     {
         result.push_back(buffer);
     }
