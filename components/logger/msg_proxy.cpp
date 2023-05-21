@@ -140,7 +140,7 @@ std::string MsgProxy::getHeader(const struct timeval& time)
     tm local = *localtime(&t);
     int ms = time.tv_usec / 1000;
 
-    char str[20];
+    char str[60];
     sprintf(str, "[%02dT%02d:%02d:%02d:%03d] ", local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec, ms);
     return std::string(str);
 }

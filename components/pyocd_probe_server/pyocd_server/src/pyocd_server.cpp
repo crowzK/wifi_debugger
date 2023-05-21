@@ -155,7 +155,7 @@ void PyOcdParser::sendString(const char * str)
 void PyOcdParser::sendInt(uint32_t val)
 {
     char buffer[128] = {};
-    const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 0, \"result\": %u}\n", mId, val);
+    const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 0, \"result\": %lu}\n", mId, val);
     send(mSocket, buffer, len, 0);
 }
     
