@@ -90,6 +90,9 @@ bool Console::init()
     /* Move the caret to the beginning of the next line on '\n' */
     esp_vfs_dev_usb_serial_jtag_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
 
+    fcntl(fileno(stdout), F_SETFL, 0);
+    fcntl(fileno(stdin), F_SETFL, 0);
+
     usb_serial_jtag_driver_config_t usb_serial_jtag_config
     {
         .tx_buffer_size = 1024,
@@ -170,7 +173,6 @@ void Console::task()
 
     /* Tell vfs to use usb-serial-jtag driver */
     esp_vfs_usb_serial_jtag_use_driver();
-
 
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();

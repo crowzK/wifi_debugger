@@ -3,3 +3,4 @@ sdkconfig.old
 trace/
 .vscode/settings.json
 debug.log
+sdkconfig
