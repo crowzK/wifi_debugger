@@ -133,7 +133,7 @@ bool SettingCmd::excute(const std::vector<std::string>& args)
 
 std::string SettingCmd::help()
 {
-    return std::string(cCmd) + std::string(" <baudrate>");
+    return std::string(cCmd) + std::string("#<baudrate>");
 }
 
 //-------------------------------------------------------------------

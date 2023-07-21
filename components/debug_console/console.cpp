@@ -110,6 +110,7 @@ void Console::help()
     std::lock_guard<std::recursive_mutex> lock(mMutex);
     printf("\n\n---------------------------------\n");
     printf("Console cmd help\n");
+    printf("Use `#` as a delimiter for parameters instead of spaces\n");
     for(auto& pCmd : mCmdList)
     {
         printf("%10s | %s\n", pCmd->cCmd.c_str(), pCmd->help().c_str());
@@ -152,6 +153,7 @@ std::vector<std::string> Console::split(const std::string& cmd)
 
     while (std::getline(iss, buffer, '#')) 
     {
+        printf("split: %s\n", buffer.c_str());
         result.push_back(buffer);
     }
 
