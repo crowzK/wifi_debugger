@@ -49,7 +49,7 @@ public:
     ~WebLogSender();
 
 protected:
-    bool writeLine(const MsgProxy::Msg& msg) override;
+    bool writeStr(const MsgProxy::Msg& msg) override;
 };
 
 //! Web sockek handler

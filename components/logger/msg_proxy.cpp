@@ -95,7 +95,7 @@ bool MsgProxy::write(uint8_t* msg, uint32_t length, bool newLine)
     return mQueue.push(std::move(_msg), std::chrono::milliseconds(100));
 }
 
-void MsgProxy::sendLine(const Msg& msg)
+void MsgProxy::sendTimeStamp(const Msg& msg)
 {  
     std::list<Client*> erase;
     for(auto it = mClientList.begin(); it != mClientList.end(); ++it)
@@ -104,7 +104,7 @@ void MsgProxy::sendLine(const Msg& msg)
         {
             continue;
         }
-        if((*it)->writeLine(msg) == false)
+        if((*it)->writeTimeStamp(msg) == false)
         {
             erase.push_back(*it);
         }
@@ -177,14 +177,13 @@ void DebugMsgRx::task()
         Msg msg;
         if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.size())
         {
-            sendStr(msg);
             if(msg.newLine)
             {
                 Msg header;
                 header.str = getHeader(msg.time);
-                sendLine(header);
+                sendTimeStamp(header);
             }
-            sendLine(msg);
+            sendStr(msg);
         }
     }
 }

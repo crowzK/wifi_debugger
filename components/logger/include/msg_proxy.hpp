@@ -83,7 +83,7 @@ protected:
 
     //! \brief send messages to the clients.
     //! \note child class must call this to send data to the clients.  
-    void sendLine(const Msg& msg);
+    void sendTimeStamp(const Msg& msg);
     void sendStr(const Msg& msg);
 };
 
@@ -95,9 +95,10 @@ public:
     Client(MsgProxy& debugMsg, int id);
     virtual ~Client();
 
-    //! \brief proxy will call this write method to deliver message 
-    virtual bool writeLine(const MsgProxy::Msg& msg) { return true; };
+    //! \brief write time stamp
+    virtual bool writeTimeStamp(const MsgProxy::Msg& msg) { return writeStr(msg); };
 
+    //! \brief write string
     virtual bool writeStr(const MsgProxy::Msg& msg) { return true; };
 
 protected:

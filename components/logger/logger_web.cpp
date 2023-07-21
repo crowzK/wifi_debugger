@@ -69,7 +69,7 @@ WebLogSender::~WebLogSender()
 
 }
 
-bool WebLogSender::writeLine(const MsgProxy::Msg& msg)
+bool WebLogSender::writeStr(const MsgProxy::Msg& msg)
 {
     httpd_ws_frame_t ws_pkt = {};
 

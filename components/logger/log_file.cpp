@@ -128,7 +128,7 @@ FILE* LogFile::createFile()
     return fopen(mFilePath.c_str(), "w");
 }
 
-bool LogFile::writeLine(const MsgProxy::Msg& msg)
+bool LogFile::writeStr(const MsgProxy::Msg& msg)
 {
     mMsgQueue.push(msg, 0ms);
     return true;
