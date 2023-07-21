@@ -23,7 +23,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <memory>
 #include <list>
 #include <mutex>
-#include <string>
+#include <vector>
 #include "blocking_queue.hpp"
 #include "task.hpp"
 
@@ -39,7 +39,8 @@ public:
 
     struct Msg
     {
-        std::string str;
+        std::vector<uint8_t> str;
+        bool newLine;
         struct timeval time;
     
         void clear()
@@ -47,16 +48,11 @@ public:
             str.clear();
         }
 
-        Msg& operator + (const Msg& msg)
-        {
-            this->str += msg.str;
-            return *this;
-        }
-
         Msg& operator = (const Msg& msg)
         {
             this->str = std::move(msg.str);
             time = msg.time;
+            newLine = msg.newLine;
             return *this;
         }
     };
@@ -73,9 +69,9 @@ public:
     //! \brief Write message for broadcating
     //! \note it pushes message to the Queue and 
     //! sendMsg() will pop messages form the queue and send its clients
-    bool write(char* msg);
+    bool write(uint8_t* msg, uint32_t length, bool newLine);
 
-    static std::string getHeader(const struct timeval& time);
+    static std::vector<uint8_t> getHeader(const struct timeval& time);
 
 protected:
     BlockingQueue<Msg> mQueue;
@@ -115,8 +111,6 @@ public:
     static DebugMsgRx& create();
 
 protected:
-    Msg mLine;
-
     DebugMsgRx();
     ~DebugMsgRx();
     void task() override;

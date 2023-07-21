@@ -46,7 +46,7 @@ UartTx::UartTx(int uartPortNum):
 
 bool UartTx::writeStr(const MsgProxy::Msg& msg)
 {
-    uart_write_bytes(cUartNum, msg.str.c_str(), msg.str.length());
+    uart_write_bytes(cUartNum, msg.str.data(), msg.str.size());
     return true;
 }
 
@@ -77,15 +77,27 @@ std::string string_to_hex(const std::string& input)
 void UartRx::task()
 {
     char buffer[RX_BUF_SIZE + 1];
+    bool newLine = true;
     while(mRun)
     {
-        std::vector<uint8_t> rcvBuffer;
-        rcvBuffer.resize(RX_BUF_SIZE + 1);
         const int rxBytes = uart_read_bytes(cUartNum, buffer, RX_BUF_SIZE, 1);
         if(rxBytes)
         {
-            buffer[rxBytes] = 0;
-            DebugMsgRx::create().write(buffer);
+            uint32_t strStartIdx = 0;
+            for(int i = 0; i < rxBytes; i++)
+            {
+                if(buffer[i] == '\n')
+                {
+                    DebugMsgRx::create().write((uint8_t*)&buffer[strStartIdx], (i - strStartIdx) + 1, newLine);
+                    strStartIdx = i + 1;
+                    newLine = true;
+                }
+            }
+            if(strStartIdx < rxBytes)
+            {
+                DebugMsgRx::create().write((uint8_t*)&buffer[strStartIdx], rxBytes - strStartIdx, newLine);
+                newLine = false;
+            }
         }
     }
 }

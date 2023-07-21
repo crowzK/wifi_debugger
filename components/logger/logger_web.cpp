@@ -73,8 +73,8 @@ bool WebLogSender::writeLine(const MsgProxy::Msg& msg)
 {
     httpd_ws_frame_t ws_pkt = {};
 
-    ws_pkt.payload = (uint8_t*)msg.str.c_str();
-    ws_pkt.len = msg.str.length();
+    ws_pkt.payload = (uint8_t*)msg.str.data();
+    ws_pkt.len = msg.str.size();
     ws_pkt.type = HTTPD_WS_TYPE_TEXT;
 
     if(httpd_ws_send_frame_async(hd, fd, &ws_pkt) != ESP_OK)
@@ -169,6 +169,6 @@ esp_err_t WsHandler::userHandler(httpd_req *req)
         return ret;
     }
     tx[ws_pkt.len] = 0;
-    DebugMsgTx::create().write((char*) tx.data());
+    DebugMsgTx::create().write(tx.data(), ws_pkt.len, true);
     return ret;
 }

@@ -57,7 +57,7 @@ public:
     ~UartByPass() = default;
 
 protected:
-    BlockingQueue<std::string> mQueue;
+    BlockingQueue<std::vector<uint8_t>> mQueue;
     LineEndMap mLineEndMode;
 
     bool writeStr(const MsgProxy::Msg& msg) override;

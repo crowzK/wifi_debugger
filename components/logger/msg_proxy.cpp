@@ -84,12 +84,15 @@ bool MsgProxy::isAdded(int id)
     return it != mClientList.end();
 }
 
-bool MsgProxy::write(char* msg)
+bool MsgProxy::write(uint8_t* msg, uint32_t length, bool newLine)
 {
-    Msg _msg;
+    Msg _msg
+    {
+        .str = std::vector<uint8_t>(msg, msg+length),
+        .newLine = newLine,
+    };
     gettimeofday(&_msg.time, NULL);
-    _msg.str = std::string(msg);
-    return mQueue.push(_msg, std::chrono::milliseconds(100));
+    return mQueue.push(std::move(_msg), std::chrono::milliseconds(100));
 }
 
 void MsgProxy::sendLine(const Msg& msg)
@@ -134,7 +137,7 @@ void MsgProxy::sendStr(const Msg& msg)
     }
 }
 
-std::string MsgProxy::getHeader(const struct timeval& time)
+std::vector<uint8_t> MsgProxy::getHeader(const struct timeval& time)
 {
     std::time_t t = time.tv_sec;
     tm local = *localtime(&t);
@@ -142,7 +145,7 @@ std::string MsgProxy::getHeader(const struct timeval& time)
 
     char str[60];
     sprintf(str, "[%02dT%02d:%02d:%02d:%03d] ", local.tm_mday, local.tm_hour, local.tm_min, local.tm_sec, ms);
-    return std::string(str);
+    return std::vector<uint8_t>(str, str + strlen(str));
 }
 
 //-------------------------------------------------------------------
@@ -172,25 +175,16 @@ void DebugMsgRx::task()
     while (mRun) 
     {
         Msg msg;
-        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.length())
+        if(mQueue.pop(msg, std::chrono::milliseconds(1000)) and msg.str.size())
         {
             sendStr(msg);
-            for(int i = 0; i < msg.str.length(); i ++)
+            if(msg.newLine)
             {
-                if(mLine.str.length() == 0)
-                {
-                    mLine = msg;
-                    mLine.str = getHeader(mLine.time);
-                }
-                const char& ch = msg.str[i];
-                mLine.str += ch;
-                if(ch == cStrEnd)
-                {
-                    std::lock_guard<std::recursive_mutex> lock(mMutex);
-                    sendLine(mLine);
-                    mLine.clear();
-                }    
+                Msg header;
+                header.str = getHeader(msg.time);
+                sendLine(header);
             }
+            sendLine(msg);
         }
     }
 }
