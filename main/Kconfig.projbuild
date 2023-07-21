@@ -23,6 +23,7 @@ menu "Wifi Debugger board options"
                 help
                     Wifi debugger v0.2 main board
         endif # IDF_TARGET_ESP32C3
+
         if IDF_TARGET_ESP32S3
 
             config WIFI_DEBUGGER_V_0_4
@@ -30,6 +31,34 @@ menu "Wifi Debugger board options"
                 default y
                 help
                     Wifi debugger v0.4 main board(esp32S3)
+
+        endif # IDF_TARGET_ESP32S3
+    endchoice
+
+    choice 
+        prompt "SDCARD BUS select"
+
+        if IDF_TARGET_ESP32C3
+
+            config SD_SPI
+                bool "Using SPI bus for SDCARD"
+                default y
+                help
+                    using spi bus for SDCARD
+        endif # IDF_TARGET_ESP32C3
+    
+        if IDF_TARGET_ESP32S3
+
+            config SD_SPI
+                bool "Using SPI bus for SDCARD"
+                help
+                    using spi bus for SDCARD
+
+            config SD_SDIO
+                bool "Using SDIO bus for SDCARD"
+                default y
+                help
+                    using sdio bus for SDCARD
 
         endif # IDF_TARGET_ESP32S3
 

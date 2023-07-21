@@ -47,6 +47,7 @@ SdCard::SdCard(const char* mountPoint) :
     };
     ESP_LOGI(TAG, "Initializing SD card");
 
+#ifdef CONFIG_SD_SPI
     sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.slot = cSpiPort;
 
@@ -92,12 +93,23 @@ SdCard::SdCard(const char* mountPoint) :
     }
     sdmmc_card_print_info(stdout, (sdmmc_card_t*)pSdcard);
     mInit = true;
+#endif //CONFIG_SD_SPI
+
+#ifdef CONFIG_SD_SDIO
+
+#endif //CONFIG_SD_SDIO
 }
 
 SdCard::~SdCard()
 {
+#ifdef CONFIG_SD_SPI
     esp_vfs_fat_sdcard_unmount(cMountPoint, (sdmmc_card_t*)pSdcard);
     spi_bus_free((spi_host_device_t)cSpiPort);
+#endif // CONFIG_SD_SPI
+
+#ifdef CONFIG_SD_SDIO
+
+#endif //CONFIG_SD_SDIO
 }
 
 bool SdCard::isInit() const
