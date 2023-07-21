@@ -16,6 +16,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include <utility>
 #include "log_file.hpp"
 #include <stdio.h>
 #include <string.h>
@@ -127,7 +128,7 @@ FILE* LogFile::createFile()
     return fopen(mFilePath.c_str(), "w");
 }
 
-bool LogFile::writeLine(const MsgProxy::Msg& msg)
+bool LogFile::writeStr(const MsgProxy::Msg& msg)
 {
     mMsgQueue.push(msg, 0ms);
     return true;

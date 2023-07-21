@@ -18,6 +18,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <unistd.h>
 #include <stdint.h>
+#include <string.h>
 #include "uart_bypass.hpp"
 #include "esp_log.h"
 #include "setting.hpp"
@@ -129,9 +130,10 @@ bool UartByPass::excute(const std::vector<std::string>& args)
     printf("Enter usb-uart mode press ctrl+B if you want to exit\n");
     while(1)
     {
-        char str[3] = {};
+        uint8_t str[3] = {};
         if(read(stdin_fileno, str, 1))
         {
+            bool newLine = false;
             if(str[0] == 2)
             {
                 printf("escape cmd enter\n");
@@ -144,6 +146,7 @@ bool UartByPass::excute(const std::vector<std::string>& args)
                 if(str[0] == '\r')
                 {
                     str[0] = '\n';
+                    newLine = true;
                 }
                 break;
             case LineEndMap::eCrCrLf:
@@ -151,12 +154,14 @@ bool UartByPass::excute(const std::vector<std::string>& args)
                 {
                     str[0] = '\r';
                     str[1] = '\n';
+                    newLine = true;
                 }
                 break;
             case LineEndMap::eLfCr:
                 if(str[0] == '\n')
                 {
                     str[0] = '\r';
+                    newLine = true;
                 }
                 break;
             case LineEndMap::eLfCrLf:
@@ -164,10 +169,11 @@ bool UartByPass::excute(const std::vector<std::string>& args)
                 {
                     str[0] = '\r';
                     str[1] = '\n';
+                    newLine = true;
                 }
                 break;
             }
-            DebugMsgTx::create().write(str);
+            DebugMsgTx::create().write(str, strlen((char*)str), newLine);
         }
     }
     return true;
@@ -177,10 +183,10 @@ void UartByPass::task()
 {
     while(mRun)
     {
-        std::string str;
-        if(mQueue.pop(str, std::chrono::milliseconds(1000)) and str.length())
+        std::vector<uint8_t> str;
+        if(mQueue.pop(str, std::chrono::milliseconds(1000)) and str.size())
         {
-            fwrite(str.c_str(), 1,str.length(), stdout);
+            fwrite(str.data(), 1, str.size(), stdout);
         }
         if(mQueue.isEmpty())
         {

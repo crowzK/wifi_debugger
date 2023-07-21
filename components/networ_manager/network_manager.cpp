@@ -228,7 +228,7 @@ bool WifiCmd::excute(const std::vector<std::string>& args)
 
 std::string WifiCmd::help()
 {
-	return std::string("join <ssid> <password>");
+	return std::string("join#<ssid>#<password>");
 }
 
 //-------------------------------------------------------------------
