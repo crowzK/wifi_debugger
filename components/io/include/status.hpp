@@ -40,6 +40,8 @@ protected:
     static constexpr int cLedGpio = GPIO_NUM_MAX;
 #elif CONFIG_WIFI_DEBUGGER_V_0_2
     static constexpr int cLedGpio = 0;
+#elif CONFIG_WIFI_DEBUGGER_V_0_4
+    static constexpr int cLedGpio = 4;
 #endif
     std::recursive_mutex mMutex;
     Led mLed;

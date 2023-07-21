@@ -41,6 +41,9 @@ protected:
 #elif CONFIG_WIFI_DEBUGGER_V_0_2
     static constexpr gpio_num_t cPinSwClk = (gpio_num_t)6;
     static constexpr gpio_num_t cPinSwDio = (gpio_num_t)4;
+#elif CONFIG_WIFI_DEBUGGER_V_0_4
+    static constexpr gpio_num_t cPinSwClk = (gpio_num_t)41;
+    static constexpr gpio_num_t cPinSwDio = (gpio_num_t)42;
 #endif
 
     inline void delay();
