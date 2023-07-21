@@ -36,6 +36,7 @@ public:
     const std::string getFilePath();
 
 protected:
+    static constexpr uint32_t cNewFileCreateDurationHours = 1;
     std::recursive_timed_mutex mMutex;
     FsManager& mFsManager;
     const char* cMountPoint;
