@@ -1,8 +1,31 @@
 menu "Wifi Debugger board options"
     choice 
         prompt "Main board select"
-        if IDF_TARGET_ESP32
 
+        if IDF_TARGET_ESP32S3
+
+            config WIFI_DEBUGGER_V_0_4
+                bool "Wifi debugger v0.4 main board"
+                help
+                    Wifi debugger v0.4 main board(esp32S3)
+
+        endif # IDF_TARGET_ESP32S3
+
+        if IDF_TARGET_ESP32C3
+             
+            config WIFI_DEBUGGER_V_0_2
+                bool "Wifi debugger v0.2, v0.3 main board"
+                help
+                    Wifi debugger v0.2 main board
+
+            config WIFI_DEBUGGER_V_0_1
+                bool "Wifi debugger v0.1 main board"
+                help
+                    Wifi debugger v0.1 main board
+            
+        endif # IDF_TARGET_ESP32C3
+
+        if IDF_TARGET_ESP32
             config M5STACK_CORE
                 bool "For M5STACK"
                 help
@@ -14,31 +37,6 @@ menu "Wifi Debugger board options"
                     using ttgo t1 board
 
         endif # IDF_TARGET_ESP32
-
-        if IDF_TARGET_ESP32C3
-
-            config WIFI_DEBUGGER_V_0_1
-                bool "Wifi debugger v0.1 main board"
-                help
-                    Wifi debugger v0.1 main board
-
-            config WIFI_DEBUGGER_V_0_2
-                bool "Wifi debugger v0.2, v0.3 main board"
-                default y
-                help
-                    Wifi debugger v0.2 main board
-                    
-        endif # IDF_TARGET_ESP32C3
-
-        if IDF_TARGET_ESP32S3
-
-            config WIFI_DEBUGGER_V_0_4
-                bool "Wifi debugger v0.4 main board"
-                default y
-                help
-                    Wifi debugger v0.4 main board(esp32S3)
-
-        endif # IDF_TARGET_ESP32S3
     endchoice
 
     choice 
