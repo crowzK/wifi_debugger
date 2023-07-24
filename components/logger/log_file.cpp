@@ -146,6 +146,7 @@ void LogFile::task()
     {
         std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
         mFsManager.mount();
+        pFile = createFile();
     }
 
     while(mRun)
