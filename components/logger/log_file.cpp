@@ -149,9 +149,9 @@ void LogFile::task()
         pFile = createFile();
     }
 
+    auto start = std::chrono::steady_clock::now();
     while(mRun)
     {
-        auto start = std::chrono::steady_clock::now();
         MsgProxy::Msg msg;
         if(mMsgQueue.pop(msg, 100ms))
         {
