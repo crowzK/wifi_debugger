@@ -17,6 +17,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 #include <utility>
+#include <chrono>
 #include "log_file.hpp"
 #include <stdio.h>
 #include <string.h>
@@ -144,22 +145,35 @@ void LogFile::task()
     if(mRun)
     {
         std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
-        if(mFsManager.mount())
-        {
-            pFile = createFile();
-        }
+        mFsManager.mount();
+        pFile = createFile();
     }
 
     while(mRun)
     {
+        auto start = std::chrono::steady_clock::now();
         MsgProxy::Msg msg;
         if(mMsgQueue.pop(msg, 100ms))
         {
             std::lock_guard<std::recursive_timed_mutex> lock(mMutex);
+            const auto now = std::chrono::steady_clock::now();
+            auto duration = std::chrono::duration_cast<std::chrono::hours>(now - start);
+
+            if(duration.count() >= cNewFileCreateDurationHours)
+            {
+                if(pFile != nullptr)
+                {
+                    fclose(pFile);
+                }
+                pFile = createFile();
+                start = now;
+            }
+
             if(pFile == nullptr)
             {
                 continue;
             }
+            
             fwrite(msg.str.data(), 1, msg.str.size(), pFile);
 
             if(mMsgQueue.isEmpty())
