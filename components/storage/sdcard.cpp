@@ -95,6 +95,31 @@ SdCard::SdCard(const char* mountPoint) :
     mInit = true;
 #endif //CONFIG_SD_SPI
 
+    sdmmc_card_t *card;
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    slot_config.width = 1;
+    slot_config.clk = gpio_num_t::GPIO_NUM_12;
+    slot_config.cmd = gpio_num_t::GPIO_NUM_13;
+    slot_config.d0 = gpio_num_t::GPIO_NUM_11;
+    slot_config.d1 = gpio_num_t::GPIO_NUM_10;
+    slot_config.d2 = gpio_num_t::GPIO_NUM_21;
+    slot_config.d3 = gpio_num_t::GPIO_NUM_14;
+    slot_config.cd = gpio_num_t::GPIO_NUM_9;
+    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+    ret = esp_vfs_fat_sdmmc_mount(cMountPoint, &host, &slot_config, &mount_config, &card);
+    if (ret != ESP_OK) {
+        if (ret == ESP_FAIL) {
+            ESP_LOGE(TAG, "Failed to mount filesystem. "
+                     "If you want the card to be formatted, set the EXAMPLE_FORMAT_IF_MOUNT_FAILED menuconfig option.");
+        } else {
+            ESP_LOGE(TAG, "Failed to initialize the card (%s). "
+                     "Make sure SD card lines have pull-up resistors in place.", esp_err_to_name(ret));
+        }
+        return;
+    }
+    ESP_LOGI(TAG, "Filesystem mounted");
+    sdmmc_card_print_info(stdout, card);
 #ifdef CONFIG_SD_SDIO
 
 #endif //CONFIG_SD_SDIO
