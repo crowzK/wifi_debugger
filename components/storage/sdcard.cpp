@@ -77,6 +77,30 @@ SdCard::SdCard(const char* mountPoint) :
     };
 
     ret = esp_vfs_fat_sdspi_mount(cMountPoint, &host, &slot_config, &mount_config, (sdmmc_card_t**)&pSdcard);
+#elif defined(CONFIG_SD_SDIO_4BIT) || defined(CONFIG_SD_SDIO_1BIT)
+    sdmmc_host_t host = SDMMC_HOST_DEFAULT();
+    sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+#if defined(CONFIG_SD_SDIO_4BIT)
+    slot_config.width = 4;
+#else
+    slot_config.width = 1;
+#endif
+    slot_config.clk = gpio_num_t::GPIO_NUM_12;
+    slot_config.cmd = gpio_num_t::GPIO_NUM_13;
+    slot_config.d0 = gpio_num_t::GPIO_NUM_11;
+    slot_config.d1 = gpio_num_t::GPIO_NUM_10;
+#if defined(CONFIG_SD_SDIO_4BIT)
+    slot_config.d2 = gpio_num_t::GPIO_NUM_21;
+    slot_config.d3 = gpio_num_t::GPIO_NUM_14;
+    slot_config.cd = gpio_num_t::GPIO_NUM_9;
+#endif
+    slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
+
+    ret = esp_vfs_fat_sdmmc_mount(cMountPoint, &host, &slot_config, &mount_config, (sdmmc_card_t**)&pSdcard);
+#else
+    static_assert(0);
+#endif
+
     if (ret != ESP_OK)
     {
         if (ret == ESP_FAIL)
@@ -91,19 +115,15 @@ SdCard::SdCard(const char* mountPoint) :
         }
         return;
     }
+    ESP_LOGI(TAG, "Filesystem mounted");
     sdmmc_card_print_info(stdout, (sdmmc_card_t*)pSdcard);
     mInit = true;
-#endif //CONFIG_SD_SPI
-
-#ifdef CONFIG_SD_SDIO
-
-#endif //CONFIG_SD_SDIO
 }
 
 SdCard::~SdCard()
 {
-#ifdef CONFIG_SD_SPI
     esp_vfs_fat_sdcard_unmount(cMountPoint, (sdmmc_card_t*)pSdcard);
+#ifdef CONFIG_SD_SPI
     spi_bus_free((spi_host_device_t)cSpiPort);
 #endif // CONFIG_SD_SPI
 
