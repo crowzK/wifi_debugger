@@ -42,14 +42,14 @@ menu "Wifi Debugger board options"
     choice 
         prompt "SDCARD BUS select"
 
-        config SD_SDIO_1BIT
-            bool "Using SDIO 1Bit bus for SDCARD"
+        config SD_SDIO_4BIT
+            bool "Using SDIO 4Bit bus for SDCARD"
             help
                 using sdio bus for SDCARD
             depends on IDF_TARGET_ESP32S3
 
-        config SD_SDIO_4BIT
-            bool "Using SDIO 4Bit bus for SDCARD"
+        config SD_SDIO_1BIT
+            bool "Using SDIO 1Bit bus for SDCARD"
             help
                 using sdio bus for SDCARD
             depends on IDF_TARGET_ESP32S3
