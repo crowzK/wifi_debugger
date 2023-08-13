@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_vfs_fat.h"
 #include <sstream>
 #include "status.hpp"
-#include "sntp.h"
+#include "esp_sntp.h"
 
 using namespace std::chrono_literals;
 static const char *TAG = "logFile";
@@ -137,7 +137,7 @@ bool LogFile::writeStr(const MsgProxy::Msg& msg)
 
 void LogFile::task()
 {
-    while(mRun and (sntp_getreachability(0) == 0))
+    while(mRun and (sntp_get_sync_status() != sntp_sync_status_t::SNTP_SYNC_STATUS_COMPLETED))
     {
         vTaskDelay(100);
     }
