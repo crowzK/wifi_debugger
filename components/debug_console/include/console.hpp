@@ -23,9 +23,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <vector>
 #include <mutex>
 #include "task.hpp"
+#include <condition_variable>
 
 class UartByPass;
 class PyOcdIoConsole;
+class PyOcdIoUart;
 
 class Cmd
 {
@@ -60,6 +62,11 @@ protected:
     std::unique_ptr<Help> mpHelp;
     std::unique_ptr<UartByPass> mpUartConsole;
     std::unique_ptr<PyOcdIoConsole> mpPyOcdConsole;
+    std::unique_ptr<PyOcdIoUart> mpPyOcdIoUart;
+    
+    static bool mUsbConnected;
+    static std::mutex mMutexRxSync;
+    static std::condition_variable mConsoleRx;
 
     Console();
     ~Console() = default;
@@ -69,6 +76,10 @@ protected:
     void remove(Cmd& cmd);
     std::vector<std::string> split(const std::string& cmd);
     void task() override;
+        
+    static void cdcRxCallback(int itf, void *event);
+    static void cdcLineStateChangedCallback(int itf, void *event);
+    static void cdcLineCodingChangedCallback(int itf, void *event);
 };
 
 #endif // CONSOLE_HPP

@@ -67,6 +67,10 @@ bool PyOcdIoConsole::excute(const std::vector<std::string>& args)
         {
             mPyOcdParser.parse(mRxBuff, len);
         }
+        else
+        {
+            vTaskDelay(1);
+        }
     }
     return true;
 }
