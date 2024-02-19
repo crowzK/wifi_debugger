@@ -120,10 +120,6 @@ public:
 		CONNECT_UNDER_RESET,
 	};
 
-	enum flash_algo_return_t{
-		FLASHALGO_RETURN_BOOL,
-		FLASHALGO_RETURN_POINTER
-	};
 
 	Target();
 	virtual ~Target() = default;
@@ -141,13 +137,6 @@ public:
 	virtual const region_info_t& getDefaultRegion(uint32_t index);
 
 protected:
-    //! ARM General Purpose Registors
-    struct GPRs
-    {
-        uint32_t r[16];
-        uint32_t xpsr;
-    };
-
 	target_cfg_t targetCfg;
 	Swd& swd;
 	bool initDebug();

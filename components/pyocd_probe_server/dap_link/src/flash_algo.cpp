@@ -16,24 +16,50 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#pragma once
+#include "flash_algo.hpp"
 
-#include <stdint.h>
-#include "target.hpp"
-
-class FlashAlgo
+int FlashAlgo::blankCheck(unsigned long adr, unsigned long sz, unsigned char pat)
 {
-public:
-	int blankCheck(unsigned long adr, unsigned long sz, unsigned char pat);
-	int eraseChip(void);
-	int eraseSector(unsigned long adr);
-	int init(unsigned long adr, unsigned long clk, unsigned long fnc);
-	int unInit(unsigned long fnc);
-	int programPage(unsigned long adr, unsigned long sz, unsigned char *buf);
-	unsigned long verify(unsigned long adr, unsigned long sz, unsigned char *buf);
 
-	FlashAlgo(std::string algorithm);
-	~FlashAlgo();
-protected:
-	Target mTarget;
-};
+}
+
+int FlashAlgo::eraseChip(void)
+{
+
+}
+
+int FlashAlgo::eraseSector(unsigned long adr)
+{
+
+}
+
+int FlashAlgo::init(unsigned long adr, unsigned long clk, unsigned long fnc)
+{
+
+}
+
+int FlashAlgo::programPage(unsigned long adr, unsigned long sz, unsigned char *buf)
+{
+
+}
+
+int FlashAlgo::unInit(unsigned long fnc)
+{
+
+}
+
+unsigned long FlashAlgo::verify(unsigned long adr, unsigned long sz, unsigned char *buf)
+{
+
+}
+
+
+FlashAlgo::FlashAlgo(std::string algorithm)
+{
+
+}
+
+FlashAlgo::~FlashAlgo()
+{
+
+}
