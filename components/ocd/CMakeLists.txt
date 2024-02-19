@@ -1,10 +1,9 @@
 set(src_dirs 
-    . 
+    libs/socket
+    libs/JSON_Decoder
     pyocd_server/src
-    pyocd_server/libs/socket
-    pyocd_server/libs/JSON_Decoder
     swd/src
-    dap_link/src
+    flash_writer/src
 )
 
 set(exclude_srcs 

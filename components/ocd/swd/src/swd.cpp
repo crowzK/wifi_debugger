@@ -533,9 +533,9 @@ bool Swd::sysCallExec(const ProgramSysCall& sysCallParam, uint32_t entry, uint32
     gprs.r[1] = arg2;                         // R1: Argument 2
     gprs.r[2] = arg3;                         // R2: Argument 3
     gprs.r[3] = arg4;                         // R3: Argument 4
-    gprs.r[9] = sysCallParam.static_base;    // SB: Static Base
-    gprs.r[13] = sysCallParam.stack_pointer; // SP: Stack Pointer
-    gprs.r[14] = sysCallParam.breakpoint;    // LR: Exit Point
+    gprs.r[9] = sysCallParam.staticBase;    // SB: Static Base
+    gprs.r[13] = sysCallParam.stackPointer; // SP: Stack Pointer
+    gprs.r[14] = sysCallParam.breakPoint;    // LR: Exit Point
     gprs.r[15] = entry;                       // PC: Entry Point
     gprs.xpsr = 0x01000000;                   // xPSR: T = 1, ISR = 0
 
