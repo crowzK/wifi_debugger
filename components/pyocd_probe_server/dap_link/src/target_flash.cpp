@@ -24,7 +24,7 @@
 #include <string.h>
 #include "target_flash.hpp"
 
-#if 0
+#if 1
 #define DEFAULT_PROGRAM_PAGE_MIN_SIZE   (256u)
 
 program_target_t * get_flash_algo(uint32_t addr)
@@ -51,7 +51,7 @@ program_target_t * get_flash_algo(uint32_t addr)
     }
 }
 
-bool flash_func_start(flash_func_t func)
+bool Flash::flashFuncStart(flash_func_t func)
 {
     program_target_t * flash = current_flash_algo;
 
@@ -77,7 +77,7 @@ bool flash_func_start(flash_func_t func)
     return ERROR_SUCCESS;
 }
 
-bool Flash::set(uint32_t addr)
+bool Flash::flashAlgoDownload(uint32_t addr)
 {
     program_target_t * new_flash_algo = get_flash_algo(addr);
     if (new_flash_algo == NULL) {
@@ -250,33 +250,32 @@ bool Flash::programPage(uint32_t addr, const uint8_t *buf, uint32_t size)
 
 bool Flash::eraseSector(uint32_t addr)
 {
-    if (g_board_info.target_cfg) {
-        bool status = ERROR_SUCCESS;
-        program_target_t * flash = current_flash_algo;
+    bool status = true;
+    program_target_t * flash = current_flash_algo;
 
-        if (!flash) {
-            return ERROR_INTERNAL;
-        }
-
-        // Check to make sure the address is on a sector boundary
-        if ((addr % target_flash_erase_sector_size(addr)) != 0) {
-            return ERROR_ERASE_SECTOR;
-        }
-
-        status = flash_func_start(FLASH_FUNC_ERASE);
-
-        if (status != ERROR_SUCCESS) {
-            return status;
-        }
-
-        if (0 == swd_flash_syscall_exec(&flash->sys_call_s, flash->erase_sector, addr, 0, 0, 0, FLASHALGO_RETURN_BOOL)) {
-            return ERROR_ERASE_SECTOR;
-        }
-
-        return ERROR_SUCCESS;
-    } else {
-        return ERROR_FAILURE;
+    if (!flash) 
+    {
+        return false;
     }
+
+    // Check to make sure the address is on a sector boundary
+    if ((addr % getPorgramPageSize(addr)) != 0) 
+    {
+        return false;
+    }
+
+    status = flash_func_start(FLASH_FUNC_ERASE);
+
+    if (status != false) 
+    {
+        return status;
+    }
+
+    if (0 == swd_flash_syscall_exec(&flash->sys_call_s, flash->erase_sector, addr, 0, 0, 0, FLASHALGO_RETURN_BOOL)) {
+        return ERROR_ERASE_SECTOR;
+    }
+
+    return ERROR_SUCCESS;
 }
 
 bool Flash::eraseChip(void)

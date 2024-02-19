@@ -21,6 +21,15 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <stdint.h>
 #include <vector>
 
+// Debug Port Register Addresses
+#define DP_IDCODE                       0x00U   // IDCODE Register (SW Read only)
+#define DP_ABORT                        0x00U   // Abort Register (SW Write only)
+#define DP_CTRL_STAT                    0x04U   // Control & Status
+#define DP_WCR                          0x04U   // Wire Control Register (SW Only)
+#define DP_SELECT                       0x08U   // Select Register (JTAG R/W & SW W)
+#define DP_RESEND                       0x08U   // Resend (SW Read Only)
+#define DP_RDBUFF                       0x0CU   // Read Buffer (Read Only)
+
 //! SWD interface
 class Swd
 {
@@ -34,7 +43,7 @@ public:
         Mismatch    = 0x10,
         ParityError = 0x12,
     };
-    
+
     using Cmd = uint8_t;
     Swd();
     virtual ~Swd() = default;
@@ -64,6 +73,14 @@ public:
 
     bool errorCheck(const char* func, Response res);
 
+    bool readGPR(uint32_t n, uint32_t& regVal);
+    bool writeGPR(uint32_t n, uint32_t regVal);
+    bool waitUntilHalted();
+    bool jtagToSwd();
+
 private:
     uint32_t mCsw;
+    bool reset();
+    bool switchMode(uint16_t mode);
+    bool readIdCode(uint32_t& id);
 };
