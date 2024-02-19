@@ -525,7 +525,7 @@ bool Swd::jtagToSwd()
     return true;
 }
 
-bool Swd::sysCallExec(const program_syscall_t *sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, flash_algo_return_t return_type)
+bool Swd::sysCallExec(const ProgramSysCall& sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, FlashAlgoRetType return_type)
 {
     GPRs gprs = {{0}, 0};
     // Call flash algorithm function on target and wait for result.
@@ -533,9 +533,9 @@ bool Swd::sysCallExec(const program_syscall_t *sysCallParam, uint32_t entry, uin
     gprs.r[1] = arg2;                         // R1: Argument 2
     gprs.r[2] = arg3;                         // R2: Argument 3
     gprs.r[3] = arg4;                         // R3: Argument 4
-    gprs.r[9] = sysCallParam->static_base;    // SB: Static Base
-    gprs.r[13] = sysCallParam->stack_pointer; // SP: Stack Pointer
-    gprs.r[14] = sysCallParam->breakpoint;    // LR: Exit Point
+    gprs.r[9] = sysCallParam.static_base;    // SB: Static Base
+    gprs.r[13] = sysCallParam.stack_pointer; // SP: Stack Pointer
+    gprs.r[14] = sysCallParam.breakpoint;    // LR: Exit Point
     gprs.r[15] = entry;                       // PC: Entry Point
     gprs.xpsr = 0x01000000;                   // xPSR: T = 1, ISR = 0
 
@@ -560,7 +560,7 @@ bool Swd::sysCallExec(const program_syscall_t *sysCallParam, uint32_t entry, uin
         return false;
     }
 
-    if (return_type == FLASHALGO_RETURN_POINTER)
+    if (return_type == FlashAlgoRetType::cPointer)
     {
         // Flash verify functions return pointer to byte following the buffer if successful.
         if (gprs.r[0] != (arg1 + arg2))

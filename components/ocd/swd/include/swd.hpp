@@ -56,12 +56,6 @@ public:
         ParityError = 0x12,
     };
     
-    enum flash_algo_return_t
-    {
-		FLASHALGO_RETURN_BOOL,
-		FLASHALGO_RETURN_POINTER
-	};
-
     //! ARM General Purpose Registors
     struct GPRs
     {
@@ -69,12 +63,18 @@ public:
         uint32_t xpsr;
     };
 
-    struct program_syscall_t
+	struct ProgramSysCall
+	{
+		uint32_t breakPoint;		// RAM start + 1 (LR)
+		uint32_t staticBase;		// data section (SB)
+		uint32_t stackPointer;		// initiali staci pointer (SP)
+	};
+
+    enum class FlashAlgoRetType
     {
-        uint32_t breakpoint;
-        uint32_t static_base;
-        uint32_t stack_pointer;
-    } __attribute__((__packed__)) ;
+		cBool,      // Ctype return success: 0, fails != 0
+		cPointer
+	};
 
     using Cmd = uint8_t;
     Swd();
@@ -114,7 +114,7 @@ public:
     bool writeCoreRegister(uint32_t n, uint32_t val);
     bool jtagToSwd();
 
-    bool sysCallExec(const program_syscall_t *sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, flash_algo_return_t return_type);
+    bool sysCallExec(const ProgramSysCall& sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, FlashAlgoRetType return_type);
     bool initDebug();
     bool setStateByHw(TargetState state);
     bool setStateBySw(TargetState state);
