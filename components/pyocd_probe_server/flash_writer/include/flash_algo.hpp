@@ -19,11 +19,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #pragma once
 
 #include <stdint.h>
-#include "target.hpp"
+#include <string>
 
 class FlashAlgo
 {
 public:
+	FlashAlgo(std::string algorithmPath);
+	~FlashAlgo();
+
 	int blankCheck(unsigned long adr, unsigned long sz, unsigned char pat);
 	int eraseChip(void);
 	int eraseSector(unsigned long adr);
@@ -31,9 +34,4 @@ public:
 	int unInit(unsigned long fnc);
 	int programPage(unsigned long adr, unsigned long sz, unsigned char *buf);
 	unsigned long verify(unsigned long adr, unsigned long sz, unsigned char *buf);
-
-	FlashAlgo(std::string algorithm);
-	~FlashAlgo();
-protected:
-	Target mTarget;
 };
