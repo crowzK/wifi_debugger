@@ -3,6 +3,8 @@ set(src_dirs
     pyocd_server/src
     pyocd_server/libs/socket
     pyocd_server/libs/JSON_Decoder
+    swd/src
+    dap_link/src
 )
 
 set(exclude_srcs 
@@ -15,6 +17,8 @@ set(include_dirs
     pyocd_server/include
     pyocd_server/libs/socket
     pyocd_server/libs/JSON_Decoder
+    swd/include
+    dap_link/include
 )
 
 idf_component_register(
