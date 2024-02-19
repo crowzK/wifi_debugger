@@ -27,6 +27,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "driver/usb_serial_jtag.h"
 //#include "hal/usb_serial_jtag_ll.h"
 #include "uart_bypass.hpp"
+#include "pyocd_io_console.hpp"
 
 #include "console.hpp"
 //-------------------------------------------------------------------
@@ -179,6 +180,8 @@ void Console::task()
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();
     mpUartConsole = std::make_unique<UartByPass>();
+    mpPyOcdConsole = std::make_unique<PyOcdIoConsole>();
+
     help();
     std::string cmd;
     while(mRun)
