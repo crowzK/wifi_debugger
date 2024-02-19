@@ -27,6 +27,6 @@ idf_component_register(
     SRC_DIRS "${src_dirs}"
     EXCLUDE_SRCS "ocd.cpp" "${exclude_srcs}"
     INCLUDE_DIRS "${include_dirs}" 
-    PRIV_REQUIRES driver storage
+    PRIV_REQUIRES driver storage esp-idf-cpp
 )
 
