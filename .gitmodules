@@ -1,3 +1,6 @@
 [submodule "components/ocd/libs/JSON_Decoder"]
 	path = components/ocd/libs/JSON_Decoder
 	url = https://github.com/Bodmer/JSON_Decoder.git
+[submodule "components/ocd/libs/ELFIO"]
+	path = components/ocd/libs/ELFIO
+	url = https://github.com/serge1/ELFIO.git
