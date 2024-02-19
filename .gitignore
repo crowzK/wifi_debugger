@@ -1,6 +1,6 @@
 build/
 sdkconfig.old
 trace/
-.vscode/settings.json
+.vscode/
 debug.log
 sdkconfig
