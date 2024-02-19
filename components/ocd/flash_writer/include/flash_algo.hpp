@@ -20,20 +20,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <stdint.h>
 #include <string>
+#include <array>
+#include <vector>
+#include <memory>
 #include "FlashOS.h"
+#include "swd.hpp"
 
 class FlashAlgo
 {
 public:
-	struct TargerRamInfo
+	struct RamInfo
 	{
 		uint32_t ramStartAddr;
-		uint32_t ramEndAddr;
-		uint32_t programBufferAddr;	// when it calls `programPage`, the debugger write data to this memory
-		uint32_t programBufferSize;
+		uint32_t ramSize;
 	};
 
-	FlashAlgo(const std::string& algorithmPath, TargerRamInfo targetRam);
+	FlashAlgo(const std::string& algorithmPath, const RamInfo& targetRam);
 	~FlashAlgo();
 
 	int blankCheck(unsigned long adr, unsigned long sz, unsigned char pat);
@@ -45,21 +47,43 @@ public:
 	unsigned long verify(unsigned long adr, unsigned long sz, unsigned char *buf);
 
 private:
-	struct FlashAlgoFuncLUT
+	static constexpr uint32_t cStackSize = 1024;
+	enum FuncEntry
 	{
-		// CMSIS DAP
-		const uint32_t  init;
-		const uint32_t  uninit;
-		const uint32_t  erase_chip;
-		const uint32_t  erase_sector;
-		const uint32_t  program_page;
-		const uint32_t  verify;
+		eInit,
+		eUnInit,
+		eEraseChip,
+		eEraseSector,
+		eProgramPage,
+		eVerify,
 
-		// not for the CMSIS_DAP
-		const uint32_t  program_pages;
-		const uint32_t  get_aes_key;
+		eProgramPages,
+		eGetAesKey,
+		eSize
 	};
-	const TargerRamInfo cTargerRamInfo;
-	const FlashAlgoFuncLUT cFuncLut;
-	FlashAlgoFuncLUT createLut(const std::string& algorithmPath);
+
+	using FlashAlgoFuncLUT = std::array<uint32_t, FuncEntry::eSize>;
+	struct Program
+	{
+		uint32_t startAddr;
+		std::vector<uint8_t> data;
+	};
+	struct FlashLoaderInfo
+	{
+		FlashAlgoFuncLUT lut;
+		Swd::ProgramSysCall sysCallInfo;
+		std::vector<Program> loader;
+	};
+	struct WorkRamInfo
+	{
+		RamInfo targetSramInfo;
+		RamInfo stackInfo;
+		RamInfo programMemInfo;
+	};
+	static std::array<const char* const,FuncEntry::eSize> cFuncStr;
+	const FlashLoaderInfo cLoader;
+	const WorkRamInfo cRamInfo;
+    std::unique_ptr<Swd> pSwd;
+	FlashLoaderInfo loadLoader(const std::string& algorithmPath);
+	WorkRamInfo createRamInfo(const RamInfo& targetRam);
 };

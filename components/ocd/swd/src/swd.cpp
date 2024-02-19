@@ -657,11 +657,11 @@ bool Swd::initDebug()
             continue;
         }
 
-        return 1;
+        return true;
 
     } while (--retries > 0);
 
-    return 0;
+    return false;
 }
 
 bool Swd::setStateByHw(TargetState state)
