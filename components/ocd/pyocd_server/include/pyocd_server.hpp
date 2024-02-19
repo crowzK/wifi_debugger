@@ -131,12 +131,10 @@ protected:
 class PyOcdServer
 {
 public:
-    static PyOcdServer& create();
+    PyOcdServer();
+    ~PyOcdServer() = default;
 
 protected:
     PyOcdIoSocket mPyOcdServerSocket;
     PyOcdParser mPyOcdParser;
-
-    PyOcdServer();
-    ~PyOcdServer() = default;
 };

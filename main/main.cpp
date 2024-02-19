@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "sntp.h"
 #include "sdkconfig.h"
 #include "file_server.hpp"
-#include "pyocd_server.hpp"
+#include "ocd.hpp"
 #include "log_file.hpp"
 #include "ota.hpp"
 #include "network_manager.hpp"
@@ -51,7 +51,7 @@ extern "C" void app_main(void)
 
     IndexHandler::create();
     WsHandler::create();
-    PyOcdServer::create();
+    Ocd::create();
     FileServerHandler::create();
     LogFile::create().init();
 }
