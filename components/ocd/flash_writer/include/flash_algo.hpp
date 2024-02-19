@@ -68,22 +68,24 @@ private:
 		uint32_t startAddr;
 		std::vector<uint8_t> data;
 	};
-	struct FlashLoaderInfo
-	{
-		FlashAlgoFuncLUT lut;
-		Swd::ProgramSysCall sysCallInfo;
-		std::vector<Program> loader;
-	};
 	struct WorkRamInfo
 	{
 		RamInfo targetSramInfo;
 		RamInfo stackInfo;
 		RamInfo programMemInfo;
 	};
+	struct FlashLoaderInfo
+	{
+		FlashAlgoFuncLUT lut;
+		WorkRamInfo workRamInfo;
+		Swd::ProgramSysCall sysCallInfo;
+		std::vector<Program> loader;
+	};
 	static std::array<const char* const,FuncEntry::eSize> cFuncStr;
 	const FlashLoaderInfo cLoader;
-	const WorkRamInfo cRamInfo;
     std::unique_ptr<Swd> pSwd;
 	FlashLoaderInfo loadLoader(const std::string& algorithmPath, const RamInfo& targetRam);
 	WorkRamInfo createRamInfo(const RamInfo& targetRam);
+
+	uint32_t writeSwd(uint32_t addr, const uint8_t* buffer, uint32_t bufferSize);
 };

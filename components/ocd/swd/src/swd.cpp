@@ -19,6 +19,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "swd.hpp"
 #include <esp_log.h>
 #include <chrono>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 using namespace std::chrono_literals;
 
@@ -364,9 +366,10 @@ bool Swd::writeGPR(uint32_t n, uint32_t regVal)
     return false;
 }
 
-bool Swd::writeGPRs(GPRs &gprs)
+bool Swd::writeDebugState(GPRs &gprs)
 {
     uint32_t i, status;
+    uint32_t pc;
 
     if (not writeDp(DP_SELECT, 0))
     {
@@ -431,82 +434,17 @@ bool Swd::waitUntilHalted()
 {
     // Wait for target to stop
     uint32_t val, i, timeout = MAX_TIMEOUT;
-
+    uint32_t pc;
     for (i = 0; i < timeout; i++)
     {
         if (not readMemory(DBG_HCSR, 32, val))
         {
             return false;
         }
-
+        vTaskDelay(100);
+        readGPR(15, pc);
+        ESP_LOGI(TAG, "%s PC %lX", __func__, pc);
         if (val & S_HALT)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool Swd::readCoreRegister(uint32_t n, uint32_t &val)
-{
-    int i = 0, timeout = 100;
-
-    if (!writeMemory(DCRSR, 32, n))
-    {
-        return false;
-    }
-
-    // wait for S_REGRDY
-    for (i = 0; i < timeout; i++)
-    {
-        if (!readMemory(DHCSR, 32, val))
-        {
-            return false;
-        }
-
-        if (val & S_REGRDY)
-        {
-            break;
-        }
-    }
-
-    if (i == timeout)
-    {
-        return false;
-    }
-
-    if (!readMemory(DCRDR, 32, val))
-    {
-        return false;
-    }
-
-    return true;
-}
-
-bool Swd::writeCoreRegister(uint32_t n, uint32_t val)
-{
-    int i = 0, timeout = 100;
-
-    if (!writeMemory(DCRDR, 32, val))
-    {
-        return false;
-    }
-
-    if (!writeMemory(DCRSR, 32, n | REGWnR))
-    {
-        return false;
-    }
-
-    // wait for S_REGRDY
-    for (i = 0; i < timeout; i++)
-    {
-        if (!readMemory(DHCSR, 32, val))
-        {
-            return false;
-        }
-
-        if (val & S_REGRDY)
         {
             return true;
         }
@@ -539,15 +477,18 @@ bool Swd::sysCallExec(const ProgramSysCall& sysCallParam, uint32_t entry, uint32
     gprs.r[15] = entry;                       // PC: Entry Point
     gprs.xpsr = 0x01000000;                   // xPSR: T = 1, ISR = 0
 
-    if (not writeGPRs(gprs))
+    ESP_LOGI(TAG, "%s PC %lX SP %lX SB %lX LR %lX", __func__, entry, sysCallParam.stackPointer,  sysCallParam.staticBase,  sysCallParam.breakPoint);
+    if (not writeDebugState(gprs))
     {
         return false;
     }
+    ESP_LOGI(TAG, "%s Res writeDebugState done", __func__);
 
     if (not waitUntilHalted())
     {
         return false;
     }
+    ESP_LOGI(TAG, "%s Res waitUntilHalted done", __func__);
 
     if (not readGPR(0, gprs.r[0]))
     {
@@ -785,9 +726,13 @@ bool Swd::setStateByHw(TargetState state)
     return true;
 }
 
+#define SCB_AIRCR_PRIGROUP_Pos              8U                                            /*!< SCB AIRCR: PRIGROUP Position */
+#define SCB_AIRCR_PRIGROUP_Msk             (7UL << SCB_AIRCR_PRIGROUP_Pos)                /*!< SCB AIRCR: PRIGROUP Mask */
 bool Swd::setStateBySw(TargetState state)
 {
+    static uint32_t  soft_reset = SYSRESETREQ;
     uint32_t val;
+    int8_t ap_retries = 2;
     if (state != TargetState::eRun)
     {
         // init
@@ -803,48 +748,67 @@ bool Swd::setStateBySw(TargetState state)
         setReset(false);
         break;
     case TargetState::eResetProgram:
-        setReset(true);
-        setReset(false);
-
         if (not initDebug())
         {
             return false;
         }
 
-        // Power down
-        // Per ADIv6 spec. Clear first CSYSPWRUPREQ followed by CDBGPWRUPREQ
-        if (not readDp(DP_CTRL_STAT, val))
+        // Enable debug and halt the core (DHCSR <- 0xA05F0003)
+        while (writeMemory(DBG_HCSR, 32, DBGKEY | C_DEBUGEN | C_HALT) == 0)
         {
-            return false;
-        }
-
-        if (not writeDp(DP_CTRL_STAT, val & ~CSYSPWRUPREQ))
-        {
-            return false;
-        }
-
-        // Wait until ACK is deasserted
-        do
-        {
-            if (not readDp(DP_CTRL_STAT, val))
+            if (--ap_retries <= 0)
             {
                 return false;
             }
-        } while ((val & (CSYSPWRUPACK)) != 0);
+            // Target is in invalid state?
+            setReset(true);
+            setReset(false);
+        }
 
-        if (not writeDp(DP_CTRL_STAT, val & ~CDBGPWRUPREQ))
+        // Wait until core is halted
+        do
+        {
+            if (not readMemory(DBG_HCSR, 32, val))
+            {
+                return false;
+            }
+        } while ((val & S_HALT) == 0);
+
+        // Enable halt on reset
+        if (not writeMemory(DBG_EMCR, 32, VC_CORERESET))
         {
             return false;
         }
 
-        // Wait until ACK is deasserted
+        // Perform a soft reset
+        if (not readMemory(NVIC_AIRCR, 32, val))
+        {
+            return false;
+        }
+
+        if (not writeMemory(NVIC_AIRCR, 32, VECTKEY | (val & SCB_AIRCR_PRIGROUP_Msk) | soft_reset))
+        {
+            return false;
+        }
+
+        // osDelay(2);
+
         do
         {
-            if (not readDp(DP_CTRL_STAT, val))
+            if (not readMemory(DBG_HCSR, 32, val))
             {
                 return false;
             }
-        } while ((val & (CDBGPWRUPACK)) != 0);
+        } while ((val & S_HALT) == 0);
+
+        // Disable halt on reset
+        if (not writeMemory(DBG_EMCR, 32, 0))
+        {
+            return false;
+        }
+        uint32_t pc;
+        readGPR(16, pc);
+        ESP_LOGI(TAG, "%s XPR %lX", __func__, pc);
         break;
     case TargetState::eNoDebug:
         if (not writeMemory(DBG_HCSR, 32, DBGKEY))

@@ -7,7 +7,7 @@
 FlashWriter::FlashWriter() :
     Task(__func__)
 {
-    start();
+    //start();
 }
 
 FlashWriter::~FlashWriter()
@@ -22,6 +22,7 @@ void FlashWriter::connectTarget(bool connect)
     {
         std::string path = std::string(fsm.getMountPoint()) + std::string("/STM32F4xx_512.FLM");
         mpFlashAlgorithm = std::make_unique<FlashAlgo>(path, FlashAlgo::RamInfo{.ramStartAddr = 0x20000000, .ramSize = 0x4000});
+        mpFlashAlgorithm->init(0, 0, 0);
     }
 }
 

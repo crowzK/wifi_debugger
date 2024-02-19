@@ -21,11 +21,10 @@ std::array<const char* const, 8> FlashAlgo::cFuncStr
 }};
 
 FlashAlgo::FlashAlgo(const std::string &algorithmPath, const RamInfo& targetRam) :
-    cLoader(loadLoader(algorithmPath, targetRam)),
-    cRamInfo(createRamInfo(targetRam))
+    cLoader(loadLoader(algorithmPath, targetRam))
 {
     pSwd = std::make_unique<GpioSwd>();
-    if(not pSwd->setStateBySw(Swd::TargetState::eHalt))
+    if(not pSwd->setStateBySw(Swd::TargetState::eResetProgram))
     {
         return;
     }
@@ -33,36 +32,12 @@ FlashAlgo::FlashAlgo(const std::string &algorithmPath, const RamInfo& targetRam)
     ESP_LOGI(TAG, "SWD init success");
     for(const auto& loader: cLoader.loader)
     {
-        ESP_LOGI(TAG, "Loader download addr %lX size %X", loader.startAddr, loader.data.size());
-        const uint32_t cLength = loader.data.size() / sizeof(uint32_t);
-        const uint32_t* cWrite = reinterpret_cast<const uint32_t*>(loader.data.data());
-        
-        // todo if length is > 1024 
-        // create problem
-    
-        // load Flahs loader
-        if(not pSwd->writeMemoryBlcok32(loader.startAddr, cWrite, cLength))
-        {
-            ESP_LOGE(TAG, "Loader download fails %lX size %X", loader.startAddr, loader.data.size());
-            return;
-        }
-
-        std::vector<uint32_t> verify;
-        verify.resize(cLength);
-        if(not pSwd->readMemoryBlcok32(loader.startAddr, verify.data(), cLength))
-        {
-            ESP_LOGE(TAG, "Loader read fails %lX size %X", loader.startAddr, loader.data.size());
-            return;
-        }
-        for(int i  = 0; i < cLength; i++)
-        {
-            if(verify.at(i) != cWrite[i])
-            {
-                ESP_LOGE(TAG, "Loader verify fails Addr %d read %lX write %lX", i, verify.at(i), cWrite[i]);
-            }
-        }
+        ESP_LOGI(TAG, "Loader download addr 0x%lX size 0x%X", loader.startAddr, loader.data.size());
+        writeSwd(loader.startAddr, loader.data.data(), loader.data.size());
     }
     ESP_LOGI(TAG, "Loader download done");
+    pSwd->setStateBySw(Swd::TargetState::eResetProgram);
+    ESP_LOGI(TAG, "ResetProgram done");
 }
 
 FlashAlgo::~FlashAlgo()
@@ -79,9 +54,9 @@ FlashAlgo::FlashLoaderInfo FlashAlgo::loadLoader(const std::string &algorithmPat
         ESP_LOGI(TAG, "loadLoader");
 
         ELFIO::dump::header( std::cout, elfIo );
-        ELFIO::dump::section_headers( std::cout, elfIo );
+        //ELFIO::dump::section_headers( std::cout, elfIo );
         ELFIO::dump::segment_headers( std::cout, elfIo );
-        //ELFIO::dump::symbol_tables( std::cout, elfIo );
+        ELFIO::dump::symbol_tables( std::cout, elfIo );
         //ELFIO::dump::notes( std::cout, elfIo );
         //ELFIO::dump::modinfo( std::cout, elfIo );
         //ELFIO::dump::dynamic_tags( std::cout, elfIo );
@@ -114,8 +89,8 @@ FlashAlgo::FlashLoaderInfo FlashAlgo::loadLoader(const std::string &algorithmPat
                     {
                         if(std::string(cFuncStr[i]) == name)
                         {
-                            lut.lut[i] = value;
-                            ESP_LOGI(TAG, "name %s addr %llX", name.c_str(), value);
+                            lut.lut[i] = value + targetRam.ramStartAddr;
+                            ESP_LOGI(TAG, "name %s addr 0x%lX", name.c_str(), lut.lut[i]);
                         }
                     }
                 }
@@ -138,6 +113,10 @@ FlashAlgo::FlashLoaderInfo FlashAlgo::loadLoader(const std::string &algorithmPat
             ESP_LOGI(TAG, "Loader data start %lX size %lX", prg.startAddr, size);
         }
     }
+    lut.workRamInfo = createRamInfo(targetRam);
+    lut.sysCallInfo.breakPoint = lut.workRamInfo.targetSramInfo.ramStartAddr + 1;
+    lut.sysCallInfo.staticBase = lut.workRamInfo.programMemInfo.ramStartAddr;
+    lut.sysCallInfo.stackPointer = lut.workRamInfo.stackInfo.ramStartAddr + lut.workRamInfo.stackInfo.ramSize - 4;
     return lut;
 }
 
@@ -158,7 +137,7 @@ FlashAlgo::WorkRamInfo FlashAlgo::createRamInfo(const RamInfo& targetRam)
         loaderSize &= ~cAlign;
     }
 
-    ESP_LOGI(TAG, "Loader Size %lX", loaderSize);
+    ESP_LOGI(TAG, "Loader Size 0x%lX", loaderSize);
     const uint32_t workRamEndAdr = targetRam.ramStartAddr + loaderSize;
     const uint32_t stackEndAdr = workRamEndAdr + cStackSize;
     const uint32_t programMemSize = targetRam.ramSize - (cStackSize + loaderSize);
@@ -168,10 +147,54 @@ FlashAlgo::WorkRamInfo FlashAlgo::createRamInfo(const RamInfo& targetRam)
         .stackInfo = RamInfo{.ramStartAddr = workRamEndAdr, .ramSize = cStackSize},
         .programMemInfo = RamInfo{.ramStartAddr = stackEndAdr, .ramSize = programMemSize}
     };
-    ESP_LOGI(TAG, "Target Ram start %lX size %lX", info.targetSramInfo.ramStartAddr, info.targetSramInfo.ramSize);
+    ESP_LOGI(TAG, "Target Ram start 0x%lX size 0x%lX", info.targetSramInfo.ramStartAddr, info.targetSramInfo.ramSize);
     ESP_LOGI(TAG, "Stack start %lX size %lX", info.stackInfo.ramStartAddr, info.stackInfo.ramSize);
-    ESP_LOGI(TAG, "ProgramMem start %lX size %lX", info.programMemInfo.ramStartAddr, info.programMemInfo.ramSize);
+    ESP_LOGI(TAG, "ProgramMem start 0x%lX size 0x%lX", info.programMemInfo.ramStartAddr, info.programMemInfo.ramSize);
     return info;
+}
+
+uint32_t FlashAlgo::writeSwd(uint32_t addr, const uint8_t* buffer, uint32_t bufferSize)
+{
+    ESP_LOGI(TAG, "%s %lX size %lX", __func__, addr, bufferSize);
+
+    constexpr uint32_t cMaxPageSize = 1024;
+    std::vector<uint32_t> verify;
+    verify.resize(cMaxPageSize / sizeof(uint32_t));
+
+    // load Flash loader
+    uint32_t index = 0;
+    uint32_t leng = bufferSize;
+    do
+    {
+        const uint32_t chunkLen8 = std::min(leng, cMaxPageSize);
+        const uint32_t chunkLen = chunkLen8 / sizeof(uint32_t);
+        const uint32_t* cpWrite = reinterpret_cast<const uint32_t*>(&buffer[index]);
+
+        ESP_LOGI(TAG, "%s addr 0x%lX leng 0x%lX", __func__, addr, chunkLen8);
+        if(not pSwd->writeMemoryBlcok32(addr, cpWrite, chunkLen))
+        {
+            ESP_LOGE(TAG, "%s fails addr 0x%lX size 0x%lX", __func__, addr, index);
+            return index;
+        }
+
+        if(not pSwd->readMemoryBlcok32(addr, verify.data(), chunkLen))
+        {
+            ESP_LOGE(TAG, "%s read fails addr 0x%lX size 0x%lX", __func__, addr, index);
+            return index;
+        }
+        for(int i  = 0; i < chunkLen; i++)
+        {
+            if(verify.at(i) != cpWrite[i])
+            {
+                ESP_LOGE(TAG, "%s verify fails Addr 0x%lu read 0x%lX write 0x%lX", __func__, addr + i, verify.at(i), cpWrite[i]);
+            }
+        }
+
+        leng -= chunkLen8;
+        addr += chunkLen8;
+        index += chunkLen8;
+    } while(leng > 0);
+    return index;
 }
 
 int FlashAlgo::blankCheck(unsigned long adr, unsigned long sz, unsigned char pat)
@@ -206,14 +229,14 @@ int FlashAlgo::unInit(unsigned long fnc)
 
 int FlashAlgo::programPage(unsigned long adr, unsigned long sz, unsigned char *buf)
 {   
-    pSwd->writeMemoryBlcok32(cRamInfo.programMemInfo.ramStartAddr, reinterpret_cast<const uint32_t*>(buf), sz / sizeof(uint32_t));
-    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eProgramPage], adr, sz, cRamInfo.programMemInfo.ramStartAddr, 0,  Swd::FlashAlgoRetType::cBool);
+    pSwd->writeMemoryBlcok32(cLoader.workRamInfo.programMemInfo.ramStartAddr, reinterpret_cast<const uint32_t*>(buf), sz / sizeof(uint32_t));
+    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eProgramPage], adr, sz, cLoader.workRamInfo.programMemInfo.ramStartAddr, 0,  Swd::FlashAlgoRetType::cBool);
     return 0;
 }
 
 unsigned long FlashAlgo::verify(unsigned long adr, unsigned long sz, unsigned char *buf)
 {
-    pSwd->writeMemoryBlcok32(cRamInfo.programMemInfo.ramStartAddr, reinterpret_cast<const uint32_t*>(buf), sz / sizeof(uint32_t));
-    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eVerify], adr, sz, cRamInfo.programMemInfo.ramStartAddr, 0,  Swd::FlashAlgoRetType::cBool);
+    pSwd->writeMemoryBlcok32(cLoader.workRamInfo.programMemInfo.ramStartAddr, reinterpret_cast<const uint32_t*>(buf), sz / sizeof(uint32_t));
+    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eVerify], adr, sz, cLoader.workRamInfo.programMemInfo.ramStartAddr, 0,  Swd::FlashAlgoRetType::cBool);
     return 0;
 }
