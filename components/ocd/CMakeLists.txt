@@ -1,10 +1,10 @@
 set(src_dirs 
-    .
     libs/socket
     libs/JSON_Decoder
     pyocd_server/src
     swd/src
     flash_writer/src
+    src/
 )
 
 set(exclude_srcs 
@@ -20,6 +20,7 @@ set(include_dirs
     libs/ELFIO
     swd/include
     flash_writer/include
+    include
 )
 
 idf_component_register(
