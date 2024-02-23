@@ -808,19 +808,19 @@ bool Swd::setStateBySw(TargetState state)
 
         if (not initDebug())
         {
-            return 0;
+            return false;
         }
 
         // Power down
         // Per ADIv6 spec. Clear first CSYSPWRUPREQ followed by CDBGPWRUPREQ
         if (not readDp(DP_CTRL_STAT, val))
         {
-            return 0;
+            return false;
         }
 
         if (not writeDp(DP_CTRL_STAT, val & ~CSYSPWRUPREQ))
         {
-            return 0;
+            return false;
         }
 
         // Wait until ACK is deasserted
@@ -828,13 +828,13 @@ bool Swd::setStateBySw(TargetState state)
         {
             if (not readDp(DP_CTRL_STAT, val))
             {
-                return 0;
+                return false;
             }
         } while ((val & (CSYSPWRUPACK)) != 0);
 
         if (not writeDp(DP_CTRL_STAT, val & ~CDBGPWRUPREQ))
         {
-            return 0;
+            return false;
         }
 
         // Wait until ACK is deasserted
@@ -842,7 +842,7 @@ bool Swd::setStateBySw(TargetState state)
         {
             if (not readDp(DP_CTRL_STAT, val))
             {
-                return 0;
+                return false;
             }
         } while ((val & (CDBGPWRUPACK)) != 0);
         break;

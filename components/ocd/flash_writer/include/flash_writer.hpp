@@ -1,39 +1,43 @@
 /*
 Copyright (C) Yudoc Kim <craven@crowz.kr>
- 
+
 This program is free software; you can redistribute it and/or
 modify it under the terms of the GNU General Public License
 as published by the Free Software Foundation; either version 2
 of the License, or (at your option) any later version.
- 
+
 This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
- 
+
 You should have received a copy of the GNU General Public License
 along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#include "ocd.hpp"
-#include "flash_writer.hpp"
-#include "pyocd_server.hpp"
+#pragma once
 
-Ocd& Ocd::create()
+#include <memory>
+#include <string>
+#include <mutex>
+#include "task.hpp"
+
+class FlashAlgo;
+
+class FlashWriter : protected Task
 {
-    static Ocd ocd;
-    return ocd;
-}
+public:
+	FlashWriter();
+	~FlashWriter();
 
-Ocd::Ocd() :
-    mpPyOcdServer(std::make_unique<PyOcdServer>()),
-    mpFlashWriter(std::make_unique<FlashWriter>())
-{
+	void targetUpdate(const std::string& binFile, uint32_t startAddr);
 
-}
+protected:
+	std::recursive_mutex mMutex;
+	std::unique_ptr<FlashAlgo> mpFlashAlgorithm;
 
-Ocd::~Ocd()
-{
-
-}
+	void connectTarget(bool connect = true);
+	void readTargetInfo();
+    void task() override;
+};

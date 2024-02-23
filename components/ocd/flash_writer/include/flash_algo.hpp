@@ -84,6 +84,6 @@ private:
 	const FlashLoaderInfo cLoader;
 	const WorkRamInfo cRamInfo;
     std::unique_ptr<Swd> pSwd;
-	FlashLoaderInfo loadLoader(const std::string& algorithmPath);
+	FlashLoaderInfo loadLoader(const std::string& algorithmPath, const RamInfo& targetRam);
 	WorkRamInfo createRamInfo(const RamInfo& targetRam);
 };
