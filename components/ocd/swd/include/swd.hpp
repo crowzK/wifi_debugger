@@ -67,7 +67,7 @@ public:
 	{
 		uint32_t breakPoint;		// RAM start + 1 (LR)
 		uint32_t staticBase;		// data section (SB)
-		uint32_t stackPointer;		// initiali staci pointer (SP)
+		uint32_t stackPointer;		// initiali stack pointer (SP)
 	};
 
     enum class FlashAlgoRetType
