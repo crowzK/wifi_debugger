@@ -43,6 +43,26 @@ public:
         Mismatch    = 0x10,
         ParityError = 0x12,
     };
+    
+    enum flash_algo_return_t
+    {
+		FLASHALGO_RETURN_BOOL,
+		FLASHALGO_RETURN_POINTER
+	};
+
+    //! ARM General Purpose Registors
+    struct GPRs
+    {
+        uint32_t r[16];
+        uint32_t xpsr;
+    } __attribute__((__packed__)) ;
+
+    struct program_syscall_t
+    {
+        uint32_t breakpoint;
+        uint32_t static_base;
+        uint32_t stack_pointer;
+    } __attribute__((__packed__)) ;
 
     using Cmd = uint8_t;
     Swd();
@@ -75,8 +95,14 @@ public:
 
     bool readGPR(uint32_t n, uint32_t& regVal);
     bool writeGPR(uint32_t n, uint32_t regVal);
+    bool writeGPRs(GPRs& gprs);
+
     bool waitUntilHalted();
+    bool readCoreRegister(uint32_t n, uint32_t& val);
+    bool writeCoreRegister(uint32_t n, uint32_t val);
     bool jtagToSwd();
+
+    bool sysCallExec(const program_syscall_t *sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, flash_algo_return_t return_type);
 
 private:
     uint32_t mCsw;

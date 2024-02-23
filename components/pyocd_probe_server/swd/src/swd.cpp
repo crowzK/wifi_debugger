@@ -18,12 +18,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include "swd.hpp"
 #include <esp_log.h>
-#include "debug_cm.h"
 
 // Default NVIC and Core debug base addresses
 // TODO: Read these addresses from ROM.
 #define NVIC_Addr (0xe000e000)
 #define DBG_Addr (0xe000edf0)
+
+#include "debug_cm.h"
 
 // AP CSW register, base value
 #define CSW_VALUE (CSW_RESERVED | CSW_MSTRDBG | CSW_HPROT | CSW_DBGSTAT | CSW_SADDRINC)
@@ -360,6 +361,69 @@ bool Swd::writeGPR(uint32_t n, uint32_t regVal)
     return false;
 }
 
+bool Swd::writeGPRs(GPRs &gprs)
+{
+	uint32_t i, status;
+
+	if (not writeDp(DP_SELECT, 0))
+	{
+		return false;
+	}
+
+	// R0, R1, R2, R3
+	for (i = 0; i < 4; i++)
+	{
+		if (not writeGPR(i, gprs.r[i]))
+		{
+			return false;
+		}
+	}
+
+	// R9
+	if (not writeGPR(9, gprs.r[9]))
+	{
+		return false;
+	}
+
+	// R13, R14, R15
+	for (i = 13; i < 16; i++)
+	{
+		if (not writeGPR(i, gprs.r[i]))
+		{
+			return false;
+		}
+	}
+
+	// xPSR
+	if (not writeGPR(16, gprs.xpsr))
+	{
+		return false;
+	}
+
+	if (not writeMemory(DBG_HCSR, 32, DBGKEY | C_DEBUGEN | C_MASKINTS | C_HALT))
+	{
+		return false;
+	}
+
+	if (not writeMemory(DBG_HCSR, 32, DBGKEY | C_DEBUGEN | C_MASKINTS))
+	{
+		return false;
+	}
+
+	// check status
+	if (not readDp(DP_CTRL_STAT, status))
+	{
+		return false;
+	}
+
+	if (status & (STICKYERR | WDATAERR))
+	{
+		return false;
+	}
+
+	return true;
+}
+
 bool Swd::waitUntilHalted()
 {
     // Wait for target to stop
@@ -379,6 +443,117 @@ bool Swd::waitUntilHalted()
     }
 
     return false;
+}
+
+bool Swd::readCoreRegister(uint32_t n, uint32_t& val)
+{
+    int i = 0, timeout = 100;
+
+    if (!writeMemory(DCRSR, 32, n)) {
+        return false;
+    }
+
+    // wait for S_REGRDY
+    for (i = 0; i < timeout; i++) {
+        if (!readMemory(DHCSR, 32, val)) {
+            return false;
+        }
+
+        if (val & S_REGRDY) {
+            break;
+        }
+    }
+
+    if (i == timeout) {
+        return false;
+    }
+
+    if (!readMemory(DCRDR, 32, val)) {
+        return false;
+    }
+
+    return true;
+}
+
+bool Swd::writeCoreRegister(uint32_t n, uint32_t val)
+{
+    int i = 0, timeout = 100;
+
+    if (!writeMemory(DCRDR, 32, val)) {
+        return false;
+    }
+
+    if (!writeMemory(DCRSR, 32, n | REGWnR)) {
+        return false;
+    }
+
+    // wait for S_REGRDY
+    for (i = 0; i < timeout; i++) {
+        if (!readMemory(DHCSR, 32, val)) {
+            return false;
+        }
+
+        if (val & S_REGRDY) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool Swd::sysCallExec(const program_syscall_t *sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, flash_algo_return_t return_type)
+{
+	GPRs gprs = {{0}, 0};
+	// Call flash algorithm function on target and wait for result.
+	gprs.r[0] = arg1;						  // R0: Argument 1
+	gprs.r[1] = arg2;						  // R1: Argument 2
+	gprs.r[2] = arg3;						  // R2: Argument 3
+	gprs.r[3] = arg4;						  // R3: Argument 4
+	gprs.r[9] = sysCallParam->static_base;	  // SB: Static Base
+	gprs.r[13] = sysCallParam->stack_pointer; // SP: Stack Pointer
+	gprs.r[14] = sysCallParam->breakpoint;	  // LR: Exit Point
+	gprs.r[15] = entry;						  // PC: Entry Point
+	gprs.xpsr = 0x01000000;					  // xPSR: T = 1, ISR = 0
+
+	if (not writeGPRs(gprs))
+	{
+		return false;
+	}
+
+	if (not waitUntilHalted())
+	{
+		return false;
+	}
+
+	if (not readGPR(0, gprs.r[0]))
+	{
+		return false;
+	}
+
+	// remove the C_MASKINTS
+	if (not writeMemory(DBG_HCSR, 32, DBGKEY | C_DEBUGEN | C_HALT))
+	{
+		return false;
+	}
+
+	if (return_type == FLASHALGO_RETURN_POINTER)
+	{
+		// Flash verify functions return pointer to byte following the buffer if successful.
+		if (gprs.r[0] != (arg1 + arg2))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		// Flash functions return 0 if successful.
+		if (gprs.r[0] != 0)
+		{
+			return false;
+		}
+	}
+
+	return true;
 }
 
 bool Swd::jtagToSwd()
