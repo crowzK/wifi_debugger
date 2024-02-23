@@ -107,11 +107,9 @@ public:
 
     bool readGPR(uint32_t n, uint32_t& regVal);
     bool writeGPR(uint32_t n, uint32_t regVal);
-    bool writeGPRs(GPRs& gprs);
+    bool writeDebugState(GPRs& gprs);
 
     bool waitUntilHalted();
-    bool readCoreRegister(uint32_t n, uint32_t& val);
-    bool writeCoreRegister(uint32_t n, uint32_t val);
     bool jtagToSwd();
 
     bool sysCallExec(const ProgramSysCall& sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, FlashAlgoRetType return_type);
