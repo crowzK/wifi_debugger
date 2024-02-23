@@ -15,8 +15,9 @@ set(include_dirs
     .
     pyocd_server/src 
     pyocd_server/include
-    pyocd_server/libs/socket
-    pyocd_server/libs/JSON_Decoder
+    libs/socket
+    libs/JSON_Decoder
+    libs/ELFIO
     swd/include
     dap_link/include
 )
