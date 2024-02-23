@@ -18,7 +18,7 @@ set(include_dirs
     libs/JSON_Decoder
     libs/ELFIO
     swd/include
-    dap_link/include
+    flash_writer/include
 )
 
 idf_component_register(
