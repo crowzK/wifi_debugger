@@ -16,6 +16,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
+#include "fs_manager.hpp"
 #include "ocd.hpp"
 #include "pyocd_server.hpp"
 #include "flash_algo.hpp"
@@ -29,7 +30,13 @@ Ocd& Ocd::create()
 Ocd::Ocd() :
     mpPyOcdServer(std::make_unique<PyOcdServer>())
 {
+    auto& fsm = FsManager::create();
 
+    if(fsm.mount())
+    {
+        std::string path = std::string(fsm.getMountPoint()) + std::string("STM32F4xx_512.FLM");
+        mpFlashAlgo = std::make_unique<FlashAlgo>(path, FlashAlgo::RamInfo{.ramStartAddr = 0x20000000, .ramSize = 0x4000});
+    }
 }
 
 Ocd::~Ocd()

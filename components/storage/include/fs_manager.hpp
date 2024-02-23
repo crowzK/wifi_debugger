@@ -16,8 +16,7 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#ifndef FILE_SYSTEM_MANAGER_HPP
-#define FILE_SYSTEM_MANAGER_HPP
+#pragma once
 
 #include <memory>
 #include <mutex>
@@ -45,5 +44,3 @@ protected:
     FsManager();
     ~FsManager();
 };
-
-#endif // FILE_SYSTEM_MANAGER_HPP
