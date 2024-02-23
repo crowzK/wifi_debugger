@@ -69,17 +69,13 @@ protected:
     static std::condition_variable mConsoleRx;
 
     Console();
-    ~Console() = default;
+    virtual ~Console();
     
-    bool init();
+    virtual bool init();
     void add(Cmd& cmd);
     void remove(Cmd& cmd);
     std::vector<std::string> split(const std::string& cmd);
-    void task() override;
-        
-    static void cdcRxCallback(int itf, void *event);
-    static void cdcLineStateChangedCallback(int itf, void *event);
-    static void cdcLineCodingChangedCallback(int itf, void *event);
+    virtual void task() override;
 };
 
 #endif // CONSOLE_HPP

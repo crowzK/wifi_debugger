@@ -3,5 +3,10 @@
 cmake_minimum_required(VERSION 3.5)
 set(CMAKE_CXX_STANDARD 17)
 
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+
+# delete # when you compile for esp32c3
+#set(EXCLUDE_COMPONENTS "espressif__esp_tinyusb" "espressif__tinyusb")
+
 project(WifiDebugger)

@@ -27,12 +27,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "driver/usb_serial_jtag.h"
 #include "hal/usb_serial_jtag_ll.h"
 #include "uart_bypass.hpp"
-#include "pyocd_io_console.hpp"
 #include "pyocd_io_uart.hpp"
-#include "esp_log.h"
-#include "tinyusb.h"
-#include "tusb_cdc_acm.h"
-#include "tusb_console.h"
+#include "pyocd_io_console.hpp"
 
 #include "console.hpp"
 //-------------------------------------------------------------------
@@ -72,41 +68,6 @@ bool Help::excute(const std::vector<std::string>& args)
 //-------------------------------------------------------------------
 // Console
 //-------------------------------------------------------------------
-static const char *TAG = "Console";
-bool Console::mUsbConnected;
-std::mutex Console::mMutexRxSync;
-std::condition_variable Console::mConsoleRx;
-
-void Console::cdcRxCallback(int itf, void *ev)
-{
-    mConsoleRx.notify_all();
-}
-
-void Console::cdcLineStateChangedCallback(int itf, void *ev)
-{
-    cdcacm_event_t *event = (cdcacm_event_t*)ev;
-    int dtr = event->line_state_changed_data.dtr;
-    int rts = event->line_state_changed_data.rts;
-    ESP_LOGI(TAG, "Line state changed on channel %d: DTR:%d, RTS:%d", itf, dtr, rts);
-}
-
-void Console::cdcLineCodingChangedCallback(int itf, void *ev)
-{
-    cdcacm_event_t *event = (cdcacm_event_t*)ev;
-    int baud = event->line_coding_changed_data.p_line_coding->bit_rate;
-    ESP_LOGI(TAG, "Line coding changed on channel %d: baudrate:%d", itf, baud);
-    if(baud == 230400)
-    {
-        esp_tusb_init_console(TINYUSB_CDC_ACM_0); // log to usb
-        mUsbConnected = true;
-    }
-    else if(mUsbConnected)
-    {
-        esp_tusb_deinit_console(TINYUSB_CDC_ACM_0); // log to uart
-        mUsbConnected = false;
-    }
-}
-
 Console& Console::create()
 {
     static Console console;
@@ -121,34 +82,33 @@ Console::Console() :
     start();
 }
 
+Console::~Console()
+{
+
+}
+
 bool Console::init()
 {
     /* Disable buffering on stdin */
     setvbuf(stdin, NULL, _IONBF, 0);
 
-    /* Setting TinyUSB up */
-    ESP_LOGI(TAG, "USB initialization");
+    /* Minicom, screen, idf_monitor send CR when ENTER key is pressed */
+    esp_vfs_dev_usb_serial_jtag_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
+    /* Move the caret to the beginning of the next line on '\n' */
+    esp_vfs_dev_usb_serial_jtag_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
 
-    const tinyusb_config_t tusb_cfg = {
-        .device_descriptor = NULL,
-        .string_descriptor = NULL,
-        .external_phy = false, // In the most cases you need to use a `false` value
-        .configuration_descriptor = NULL,
+    fcntl(fileno(stdout), F_SETFL, 0);
+    fcntl(fileno(stdin), F_SETFL, 0);
+
+    usb_serial_jtag_driver_config_t usb_serial_jtag_config
+    {
+        .tx_buffer_size = 1024,
+        .rx_buffer_size = 1024
     };
 
-    ESP_ERROR_CHECK(tinyusb_driver_install(&tusb_cfg));
+    /* Install USB-SERIAL-JTAG driver for interrupt-driven reads and writes */
+    usb_serial_jtag_driver_install(&usb_serial_jtag_config);
 
-    tinyusb_config_cdcacm_t acm_cfg = {
-        .usb_dev = TINYUSB_USBDEV_0,
-        .cdc_port = TINYUSB_CDC_ACM_0,
-        .rx_unread_buf_sz = 64,
-        .callback_rx = (tusb_cdcacm_callback_t)&cdcRxCallback, // the first way to register a callback
-        .callback_rx_wanted_char = NULL,
-        .callback_line_state_changed = (tusb_cdcacm_callback_t)&cdcLineStateChangedCallback,
-        .callback_line_coding_changed = (tusb_cdcacm_callback_t)&cdcLineCodingChangedCallback
-    };
-    ESP_ERROR_CHECK(tusb_cdc_acm_init(&acm_cfg));
-    ESP_LOGI(TAG, "USB CDC console DONE");
     return true;
 }
 
@@ -209,21 +169,30 @@ std::vector<std::string> Console::split(const std::string& cmd)
 
 void Console::task()
 {
+    // waiting usb-serial cable attached
+    while(1)
+    {
+        char c;
+        int ret = usb_serial_jtag_read_bytes(&c, 1, pdMS_TO_TICKS(100));
+        if(ret > 0)
+        {
+            break;
+        }
+    }
+
+    /* Tell vfs to use usb-serial-jtag driver */
+    esp_vfs_usb_serial_jtag_use_driver();
+
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();
     mpUartConsole = std::make_unique<UartByPass>();
     mpPyOcdConsole = std::make_unique<PyOcdIoConsole>();
-    mpPyOcdIoUart = std::make_unique<PyOcdIoUart>();
-
     help();
     std::string cmd;
     while(mRun)
     {
-        std::unique_lock<std::mutex> lock(mMutexRxSync);
-        mConsoleRx.wait_for(lock, std::chrono::milliseconds(1000));
-
         char c;
-        while(read(stdin_fileno, &c, 1) > 0)
+        if(read(stdin_fileno, &c, 1) > 0)
         {
             if(c == '\r')
             {
@@ -262,6 +231,10 @@ void Console::task()
                 putchar(c);
                 fflush(stdout);
             }
+        }
+        else
+        {
+            vTaskDelay(100);
         }
     }
 };
