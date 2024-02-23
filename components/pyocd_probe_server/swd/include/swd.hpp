@@ -20,6 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <stdint.h>
 #include <vector>
+#include "dap.hpp"
 
 // Debug Port Register Addresses
 #define DP_IDCODE                       0x00U   // IDCODE Register (SW Read only)
@@ -31,9 +32,20 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #define DP_RDBUFF                       0x0CU   // Read Buffer (Read Only)
 
 //! SWD interface
-class Swd
+class Swd : public Dap
 {
 public:
+    enum class TargetState
+    {
+        eResetHold,
+        eResetRun,
+        eResetProgram,
+        eNoDebug,
+        eDebug,
+        eHalt,
+        eRun,
+    };
+
     enum Response
     {
         Ok          = 1,
@@ -55,7 +67,7 @@ public:
     {
         uint32_t r[16];
         uint32_t xpsr;
-    } __attribute__((__packed__)) ;
+    };
 
     struct program_syscall_t
     {
@@ -103,6 +115,9 @@ public:
     bool jtagToSwd();
 
     bool sysCallExec(const program_syscall_t *sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, flash_algo_return_t return_type);
+    bool initDebug();
+    bool setStateByHw(TargetState state);
+    bool setStateBySw(TargetState state);
 
 private:
     uint32_t mCsw;
