@@ -1,4 +1,5 @@
 set(src_dirs 
+    .
     libs/socket
     libs/JSON_Decoder
     pyocd_server/src
@@ -23,7 +24,7 @@ set(include_dirs
 
 idf_component_register(
     SRC_DIRS "${src_dirs}"
-    EXCLUDE_SRCS "${exclude_srcs}"
+    EXCLUDE_SRCS "ocd.cpp" "${exclude_srcs}"
     INCLUDE_DIRS "${include_dirs}" 
     PRIV_REQUIRES driver storage
 )
