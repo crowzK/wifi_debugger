@@ -38,12 +38,12 @@ public:
 	FlashAlgo(const std::string& algorithmPath, const RamInfo& targetRam);
 	~FlashAlgo();
 
-	int blankCheck(unsigned long adr, unsigned long sz, unsigned char pat);
-	int eraseChip(void);
-	int eraseSector(unsigned long adr);
-	int init(unsigned long adr, unsigned long clk, unsigned long fnc);
-	int unInit(unsigned long fnc);
-	int programPage(unsigned long adr, unsigned long sz, unsigned char *buf);
+	bool blankCheck(unsigned long adr, unsigned long sz, unsigned char pat);
+	bool eraseChip(void);
+	bool eraseSector(unsigned long adr);
+	bool init(unsigned long adr, unsigned long clk, unsigned long fnc);
+	bool unInit(unsigned long fnc);
+	bool programPage(unsigned long adr, unsigned long sz, unsigned char *buf);
 	unsigned long verify(unsigned long adr, unsigned long sz, unsigned char *buf);
 
 private:
@@ -57,6 +57,7 @@ private:
 		eVerify,
 
 		eProgramPages,
+		eSetPublicKey,
 		eGetAesKey,
 		eSize
 	};
@@ -83,6 +84,7 @@ private:
 	static std::array<const char* const,FuncEntry::eSize> cFuncStr;
 	const FlashLoaderInfo cLoader;
     std::unique_ptr<Swd> pSwd;
+
 	FlashLoaderInfo loadLoader(const std::string& algorithmPath, const RamInfo& targetRam);
 	WorkRamInfo createRamInfo(const RamInfo& targetRam);
 

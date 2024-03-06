@@ -462,6 +462,12 @@ bool Swd::jtagToSwd()
 
 bool Swd::sysCallExec(const ProgramSysCall& sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, FlashAlgoRetType return_type)
 {
+    if(entry == 0)
+    {
+        ESP_LOGE(TAG, "%s entry is null", __func__);
+        return false;
+    }
+
     GPRs gprs = {{0}, 0};
     // Call flash algorithm function on target and wait for result.
     gprs.r[0] = arg1;                         // R0: Argument 1

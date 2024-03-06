@@ -8,7 +8,7 @@
 
 static const char *TAG = "FlashAlgo";
 
-std::array<const char* const, 8> FlashAlgo::cFuncStr
+std::array<const char* const, 9> FlashAlgo::cFuncStr
 {{
     "Init",
     "UnInit",
@@ -17,6 +17,7 @@ std::array<const char* const, 8> FlashAlgo::cFuncStr
     "ProgramPage",
     "Verify",
     "ProgramPages",
+    "SetPublicKey",
     "GetAesKey",
 }};
 
@@ -238,41 +239,40 @@ uint32_t FlashAlgo::writeSwd(uint32_t addr, const uint8_t* buffer, uint32_t buff
     return index;
 }
 
-int FlashAlgo::blankCheck(unsigned long adr, unsigned long sz, unsigned char pat)
+bool FlashAlgo::blankCheck(unsigned long adr, unsigned long sz, unsigned char pat)
 {
-    // pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::blankCheck], adr, sz, pat, 0, Swd::FlashAlgoRetType::cBool);
-    return 0;
+    //if(cLoader.lut[FuncEntry::blankCheck] == 0)
+    //{
+    //    return false;
+    //}
+    //pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::blankCheck], adr, sz, pat, 0, Swd::FlashAlgoRetType::cBool);
+    return false;
 }
 
-int FlashAlgo::eraseChip(void)
+bool FlashAlgo::eraseChip(void)
 {
-    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eEraseChip], 0, 0, 0, 0, Swd::FlashAlgoRetType::cBool);
-    return 0;
+    return pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eEraseChip], 0, 0, 0, 0, Swd::FlashAlgoRetType::cBool);
 }
 
-int FlashAlgo::eraseSector(unsigned long adr)
+bool FlashAlgo::eraseSector(unsigned long adr)
 {
-    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eEraseSector], adr, 0, 0, 0, Swd::FlashAlgoRetType::cBool);
-    return 0;
+    return pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eEraseSector], adr, 0, 0, 0, Swd::FlashAlgoRetType::cBool);
 }
 
-int FlashAlgo::init(unsigned long adr, unsigned long clk, unsigned long fnc)
+bool FlashAlgo::init(unsigned long adr, unsigned long clk, unsigned long fnc)
 {
-    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eInit], adr, clk, 0, 0, Swd::FlashAlgoRetType::cBool);
-    return 0;
+    return pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eInit], adr, clk, 0, 0, Swd::FlashAlgoRetType::cBool);
 }
 
-int FlashAlgo::unInit(unsigned long fnc)
+bool FlashAlgo::unInit(unsigned long fnc)
 {
-    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eUnInit], fnc, 0, 0, 0,  Swd::FlashAlgoRetType::cBool);
-    return 0;
+    return pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eUnInit], fnc, 0, 0, 0,  Swd::FlashAlgoRetType::cBool);
 }
 
-int FlashAlgo::programPage(unsigned long adr, unsigned long sz, unsigned char *buf)
-{   
-    pSwd->writeMemoryBlcok32(cLoader.workRamInfo.programMemInfo.ramStartAddr, reinterpret_cast<const uint32_t*>(buf), sz / sizeof(uint32_t));
-    pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eProgramPage], adr, sz, cLoader.workRamInfo.programMemInfo.ramStartAddr, 0,  Swd::FlashAlgoRetType::cBool);
-    return 0;
+bool FlashAlgo::programPage(unsigned long adr, unsigned long sz, unsigned char *buf)
+{
+    return pSwd->writeMemoryBlcok32(cLoader.workRamInfo.programMemInfo.ramStartAddr, reinterpret_cast<const uint32_t*>(buf), sz / sizeof(uint32_t)) 
+    and pSwd->sysCallExec(cLoader.sysCallInfo, cLoader.lut[FuncEntry::eProgramPage], adr, sz, cLoader.workRamInfo.programMemInfo.ramStartAddr, 0,  Swd::FlashAlgoRetType::cBool);
 }
 
 unsigned long FlashAlgo::verify(unsigned long adr, unsigned long sz, unsigned char *buf)
