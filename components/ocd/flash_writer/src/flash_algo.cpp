@@ -111,6 +111,23 @@ FlashAlgo::FlashLoaderInfo FlashAlgo::loadLoader(const std::string &algorithmPat
             }
         }
         
+#if LOAD_SEGMENTS
+        for (const auto &seg : elfIo.segments)
+        {
+            const char* data = seg->get_data();
+            const uint32_t size = seg->get_file_size();
+            Program prg {
+                .startAddr = static_cast<uint32_t>(seg->get_physical_address() + ramStart),
+            };
+            if(size == 0)
+            {
+                continue;
+            }
+            std::copy(data, data + size, std::back_inserter(prg.data));
+            lut.loader.push_back(std::move(prg));
+            ESP_LOGI(TAG, "Loader data start %lX size %lX", prg.startAddr, size);
+        }
+#else
         for(const auto& section : elfIo.sections)
         {
             std::string secName = section->get_name();
@@ -131,6 +148,7 @@ FlashAlgo::FlashLoaderInfo FlashAlgo::loadLoader(const std::string &algorithmPat
                 ESP_LOGI(TAG, "Section: %s start %lX size %lX", secName.c_str(), prg.startAddr, size);
             }
         }
+#endif
     }
 
     lut.workRamInfo = createRamInfo(targetRam);
