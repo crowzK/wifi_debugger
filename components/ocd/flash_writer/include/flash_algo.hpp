@@ -47,7 +47,6 @@ public:
 	unsigned long verify(unsigned long adr, unsigned long sz, unsigned char *buf);
 
 private:
-	static constexpr uint32_t cStackSize = 1024;
 	enum FuncEntry
 	{
 		eInit,

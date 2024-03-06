@@ -35,7 +35,7 @@ FlashAlgo::FlashAlgo(const std::string &algorithmPath, const RamInfo& targetRam)
         ESP_LOGI(TAG, "Loader download addr 0x%lX size 0x%X", loader.startAddr, loader.data.size());
         writeSwd(loader.startAddr, loader.data.data(), loader.data.size());
     }
-    ESP_LOGI(TAG, "Loader download done");
+
     pSwd->setStateBySw(Swd::TargetState::eResetProgram);
     ESP_LOGI(TAG, "ResetProgram done");
 }
@@ -48,15 +48,29 @@ FlashAlgo::FlashLoaderInfo FlashAlgo::loadLoader(const std::string &algorithmPat
 {
     FlashLoaderInfo lut{};
     ELFIO::elfio elfIo;
-    ESP_LOGI(TAG, "load %s", algorithmPath.c_str());
-    if(elfIo.load(algorithmPath))
-    { 
-        ESP_LOGI(TAG, "loadLoader");
 
-        ELFIO::dump::header( std::cout, elfIo );
+    ESP_LOGI(TAG, "load %s", algorithmPath.c_str());
+
+    // Add brake instruction at the beginning of the memory to stop the CPU after return from function call
+    const uint32_t header = 0xe7fdbe00;
+    const uint32_t headerLen = 0x4;
+    const uint32_t ramStart = targetRam.ramStartAddr + headerLen;
+
+    Program prg {
+        .startAddr = ramStart - 4
+    };
+    prg.data.resize(headerLen);
+    *((uint32_t*)prg.data.data()) = header; 
+    ESP_LOGI(TAG, "heder %X", *(unsigned int*)prg.data.data());
+
+    lut.loader.push_back(std::move(prg));
+
+    if(elfIo.load(algorithmPath))
+    {
+        //ELFIO::dump::header( std::cout, elfIo );
         //ELFIO::dump::section_headers( std::cout, elfIo );
-        ELFIO::dump::segment_headers( std::cout, elfIo );
-        ELFIO::dump::symbol_tables( std::cout, elfIo );
+        //ELFIO::dump::segment_headers( std::cout, elfIo );
+        //ELFIO::dump::symbol_tables( std::cout, elfIo );
         //ELFIO::dump::notes( std::cout, elfIo );
         //ELFIO::dump::modinfo( std::cout, elfIo );
         //ELFIO::dump::dynamic_tags( std::cout, elfIo );
@@ -89,34 +103,40 @@ FlashAlgo::FlashLoaderInfo FlashAlgo::loadLoader(const std::string &algorithmPat
                     {
                         if(std::string(cFuncStr[i]) == name)
                         {
-                            lut.lut[i] = value + targetRam.ramStartAddr;
+                            lut.lut[i] = value + ramStart;
                             ESP_LOGI(TAG, "name %s addr 0x%lX", name.c_str(), lut.lut[i]);
                         }
                     }
                 }
             }
         }
-
-        for (const auto &seg : elfIo.segments)
+        
+        for(const auto& section : elfIo.sections)
         {
-            const char* data = seg->get_data();
-            const uint32_t size = seg->get_file_size();
-            Program prg {
-                .startAddr = static_cast<uint32_t>(seg->get_physical_address() + targetRam.ramStartAddr),
-            };
-            if(size == 0)
+            std::string secName = section->get_name();
+            // copy PrgCode and PrgData
+            if((secName == std::string("PrgCode")) or (secName == std::string("PrgData")))
             {
-                continue;
+                const char* data = section->get_data();
+                const uint32_t size = section->get_size();
+                if(size == 0)
+                {
+                    continue;
+                }
+                Program prg {
+                    .startAddr = static_cast<uint32_t>(section->get_address() + ramStart),
+                };
+                std::copy(data, data + size, std::back_inserter(prg.data));
+                lut.loader.push_back(std::move(prg));
+                ESP_LOGI(TAG, "Section: %s start %lX size %lX", secName.c_str(), prg.startAddr, size);
             }
-            std::copy(data, data + size, std::back_inserter(prg.data));
-            lut.loader.push_back(std::move(prg));
-            ESP_LOGI(TAG, "Loader data start %lX size %lX", prg.startAddr, size);
         }
     }
+
     lut.workRamInfo = createRamInfo(targetRam);
     lut.sysCallInfo.breakPoint = lut.workRamInfo.targetSramInfo.ramStartAddr + 1;
     lut.sysCallInfo.staticBase = lut.workRamInfo.programMemInfo.ramStartAddr;
-    lut.sysCallInfo.stackPointer = lut.workRamInfo.stackInfo.ramStartAddr + lut.workRamInfo.stackInfo.ramSize - 4;
+    lut.sysCallInfo.stackPointer = lut.workRamInfo.stackInfo.ramStartAddr;
     return lut;
 }
 
@@ -139,13 +159,13 @@ FlashAlgo::WorkRamInfo FlashAlgo::createRamInfo(const RamInfo& targetRam)
 
     ESP_LOGI(TAG, "Loader Size 0x%lX", loaderSize);
     const uint32_t workRamEndAdr = targetRam.ramStartAddr + loaderSize;
-    const uint32_t stackEndAdr = workRamEndAdr + cStackSize;
-    const uint32_t programMemSize = targetRam.ramSize - (cStackSize + loaderSize);
+    const uint32_t stackEndAdr = targetRam.ramStartAddr + targetRam.ramSize - 4;
+    const uint32_t programMemSize = stackEndAdr - workRamEndAdr;
 
     WorkRamInfo info{
         .targetSramInfo = targetRam,
-        .stackInfo = RamInfo{.ramStartAddr = workRamEndAdr, .ramSize = cStackSize},
-        .programMemInfo = RamInfo{.ramStartAddr = stackEndAdr, .ramSize = programMemSize}
+        .stackInfo = RamInfo{.ramStartAddr = stackEndAdr, .ramSize = programMemSize},
+        .programMemInfo = RamInfo{.ramStartAddr = workRamEndAdr, .ramSize = programMemSize},
     };
     ESP_LOGI(TAG, "Target Ram start 0x%lX size 0x%lX", info.targetSramInfo.ramStartAddr, info.targetSramInfo.ramSize);
     ESP_LOGI(TAG, "Stack start %lX size %lX", info.stackInfo.ramStartAddr, info.stackInfo.ramSize);
@@ -158,15 +178,17 @@ uint32_t FlashAlgo::writeSwd(uint32_t addr, const uint8_t* buffer, uint32_t buff
     ESP_LOGI(TAG, "%s %lX size %lX", __func__, addr, bufferSize);
 
     constexpr uint32_t cMaxPageSize = 1024;
+#ifdef VERIFY
     std::vector<uint32_t> verify;
     verify.resize(cMaxPageSize / sizeof(uint32_t));
-
+#endif
     // load Flash loader
     uint32_t index = 0;
     uint32_t leng = bufferSize;
     do
     {
-        const uint32_t chunkLen8 = std::min(leng, cMaxPageSize);
+        // Limit to auto increment page size
+        const uint32_t chunkLen8 = std::min(leng, cMaxPageSize - (addr & (cMaxPageSize - 1)));
         const uint32_t chunkLen = chunkLen8 / sizeof(uint32_t);
         const uint32_t* cpWrite = reinterpret_cast<const uint32_t*>(&buffer[index]);
 
@@ -177,6 +199,7 @@ uint32_t FlashAlgo::writeSwd(uint32_t addr, const uint8_t* buffer, uint32_t buff
             return index;
         }
 
+#ifdef VERIFY
         if(not pSwd->readMemoryBlcok32(addr, verify.data(), chunkLen))
         {
             ESP_LOGE(TAG, "%s read fails addr 0x%lX size 0x%lX", __func__, addr, index);
@@ -189,7 +212,7 @@ uint32_t FlashAlgo::writeSwd(uint32_t addr, const uint8_t* buffer, uint32_t buff
                 ESP_LOGE(TAG, "%s verify fails Addr 0x%lu read 0x%lX write 0x%lX", __func__, addr + i, verify.at(i), cpWrite[i]);
             }
         }
-
+#endif
         leng -= chunkLen8;
         addr += chunkLen8;
         index += chunkLen8;

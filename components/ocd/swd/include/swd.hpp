@@ -116,7 +116,7 @@ public:
     bool initDebug();
     bool setStateByHw(TargetState state);
     bool setStateBySw(TargetState state);
-
+    void printPC();
 private:
     uint32_t mCsw;
     bool reset();

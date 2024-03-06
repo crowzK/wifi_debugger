@@ -369,7 +369,6 @@ bool Swd::writeGPR(uint32_t n, uint32_t regVal)
 bool Swd::writeDebugState(GPRs &gprs)
 {
     uint32_t i, status;
-    uint32_t pc;
 
     if (not writeDp(DP_SELECT, 0))
     {
@@ -441,13 +440,11 @@ bool Swd::waitUntilHalted()
         {
             return false;
         }
-        vTaskDelay(100);
-        readGPR(15, pc);
-        ESP_LOGI(TAG, "%s PC %lX", __func__, pc);
         if (val & S_HALT)
         {
             return true;
         }
+        vTaskDelay(1);
     }
 
     return false;
@@ -806,9 +803,6 @@ bool Swd::setStateBySw(TargetState state)
         {
             return false;
         }
-        uint32_t pc;
-        readGPR(16, pc);
-        ESP_LOGI(TAG, "%s XPR %lX", __func__, pc);
         break;
     case TargetState::eNoDebug:
         if (not writeMemory(DBG_HCSR, 32, DBGKEY))
@@ -894,4 +888,11 @@ bool Swd::readIdCode(uint32_t &id)
 {
     sequence(0, 8);
     return readDp(0, id);
+}
+
+void Swd::printPC()
+{
+    uint32_t pc;
+    readGPR(15, pc);
+    ESP_LOGI(TAG, "%s PC %lX", __func__, pc);
 }
