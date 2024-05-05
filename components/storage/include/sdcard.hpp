@@ -57,11 +57,21 @@ protected:
     static constexpr int cPinCs = 10;
     static constexpr int cSpiPort = 1;
 #elif CONFIG_WIFI_DEBUGGER_V_0_4
-    static constexpr int cPinMiso = 11;
-    static constexpr int cPinMosi = 13;
-    static constexpr int cPinClk = 12;
-    static constexpr int cPinCs = 14;
-    static constexpr int cSpiPort = 1;
+    static constexpr int cClk = 12;
+    static constexpr int cCmd = 13;
+    static constexpr int cD0 = 11;
+    static constexpr int cD1 = 10;
+    static constexpr int cD2 = 21;
+    static constexpr int cD3 = 14;
+    static constexpr int cCd = 9;
+#elif CONFIG_WIFI_DEBUGGER_V_0_6
+    static constexpr int cClk = 21;
+    static constexpr int cCmd = 14;
+    static constexpr int cD0 = 47;
+    static constexpr int cD1 = 48;
+    static constexpr int cD2 = 12;
+    static constexpr int cD3 = 13;
+    static constexpr int cCd = 45;
 #endif
 
 #if CONFIG_SD_SDIO

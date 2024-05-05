@@ -70,7 +70,7 @@ protected:
     static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_21;
 #elif CONFIG_WIFI_DEBUGGER_V_0_2
     static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_9;
-#elif CONFIG_WIFI_DEBUGGER_V_0_4
+#elif defined(CONFIG_WIFI_DEBUGGER_V_0_4) || defined(CONFIG_WIFI_DEBUGGER_V_0_6)
     static constexpr gpio_num_t cParingPin = gpio_num_t::GPIO_NUM_0;
 #endif
 

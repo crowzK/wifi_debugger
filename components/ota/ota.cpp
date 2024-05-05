@@ -44,6 +44,8 @@ const char* Ota::cBinFileName = "wifiDebuggerV1.bin";
 const char* Ota::cBinFileName = "wifiDebuggerV2.bin";
 #elif CONFIG_WIFI_DEBUGGER_V_0_4
 const char* Ota::cBinFileName = "wifiDebuggerV4.bin";
+#elif CONFIG_WIFI_DEBUGGER_V_0_6
+const char* Ota::cBinFileName = "wifiDebuggerV6.bin";
 #endif
 
 const char* Ota::cBinFileDir = "/sdcard/firmware";

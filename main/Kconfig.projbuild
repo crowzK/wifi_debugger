@@ -4,6 +4,11 @@ menu "Wifi Debugger board options"
 
         if IDF_TARGET_ESP32S3
 
+            config WIFI_DEBUGGER_V_0_6
+                bool "Wifi debugger v0.6 main board"
+                help
+                    Wifi debugger v0.6 main board(esp32S3)
+                    
             config WIFI_DEBUGGER_V_0_4
                 bool "Wifi debugger v0.4 main board"
                 help
