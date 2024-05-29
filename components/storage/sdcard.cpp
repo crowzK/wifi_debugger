@@ -85,14 +85,14 @@ SdCard::SdCard(const char* mountPoint) :
 #else
     slot_config.width = 1;
 #endif
-    slot_config.clk = gpio_num_t::GPIO_NUM_12;
-    slot_config.cmd = gpio_num_t::GPIO_NUM_13;
-    slot_config.d0 = gpio_num_t::GPIO_NUM_11;
-    slot_config.d1 = gpio_num_t::GPIO_NUM_10;
+    slot_config.clk = (gpio_num_t)cClk;
+    slot_config.cmd = (gpio_num_t)cCmd;
+    slot_config.d0 = (gpio_num_t)cD0;
+    slot_config.d1 =(gpio_num_t)cD1;
 #if defined(CONFIG_SD_SDIO_4BIT)
-    slot_config.d2 = gpio_num_t::GPIO_NUM_21;
-    slot_config.d3 = gpio_num_t::GPIO_NUM_14;
-    slot_config.cd = gpio_num_t::GPIO_NUM_9;
+    slot_config.d2 = (gpio_num_t)cD2;
+    slot_config.d3 = (gpio_num_t)cD3;
+    slot_config.cd = (gpio_num_t)cCd;
 #endif
     slot_config.flags |= SDMMC_SLOT_FLAG_INTERNAL_PULLUP;
 
