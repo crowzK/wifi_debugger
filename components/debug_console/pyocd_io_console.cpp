@@ -17,6 +17,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
 #include "pyocd_io_console.hpp"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 //-------------------------------------------------------------------
 // PyOcdIoConsole
@@ -36,6 +38,7 @@ PyOcdIoConsole::~PyOcdIoConsole()
 
 uint32_t PyOcdIoConsole::send(const char* message, uint32_t len)
 {
+    vTaskDelay(1);
     return fwrite(message, 1, len, stdout);
 }
 
