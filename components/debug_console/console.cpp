@@ -25,7 +25,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "esp_vfs_dev.h"
 #include "esp_vfs_usb_serial_jtag.h"
 #include "driver/usb_serial_jtag.h"
-//#include "hal/usb_serial_jtag_ll.h"
 #include "uart_bypass.hpp"
 
 #include "console.hpp"
