@@ -129,12 +129,13 @@ Request::Cmd Request::fromString(const std::string& str)
 //-------------------------------------------------------------------
 // PyOcdParser
 //-------------------------------------------------------------------
-PyOcdParser::PyOcdParser(int socket) :
-    mSocket(socket),
+PyOcdParser::PyOcdParser(PyOcdIo& io) :
+    mPyOcdIo(io),
     mId(-1),
     mRequest(Request::cmdSize),
     mKey(Key::eInvalid)
 {
+    mPaser.setListener(this);
     pSwd = std::make_unique<GpioSwd>();
 }
 
@@ -142,21 +143,21 @@ void PyOcdParser::sendOkay()
 {
     char buffer[128] = {};
     const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 0}\n", mId);
-    send(mSocket, buffer, len, 0);
+    mPyOcdIo.send(buffer, len);
 }
 
 void PyOcdParser::sendString(const char * str)
 {
     char buffer[128] = {};
     const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 0, \"result\": %s}\n", mId, str);
-    send(mSocket, buffer, len, 0);
+    mPyOcdIo.send(buffer, len);
 }
 
 void PyOcdParser::sendInt(uint32_t val)
 {
     char buffer[128] = {};
     const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 0, \"result\": %lu}\n", mId, val);
-    send(mSocket, buffer, len, 0);
+    mPyOcdIo.send(buffer, len);
 }
     
 void PyOcdParser::sendArray(const std::vector<uint32_t>& vector)
@@ -164,7 +165,7 @@ void PyOcdParser::sendArray(const std::vector<uint32_t>& vector)
     {
         char buffer[128] = {};
         const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 0, \"result\": [", mId);
-        send(mSocket, buffer, len, 0);
+        mPyOcdIo.send(buffer, len);
     }
     std::ostringstream arr;
     arr << vector[0];
@@ -173,14 +174,14 @@ void PyOcdParser::sendArray(const std::vector<uint32_t>& vector)
         arr << ", " << vector[i];
     }
     arr << "]}\n";
-    send(mSocket, arr.str().c_str(), arr.str().size(), 0);
+    mPyOcdIo.send(arr.str().c_str(), arr.str().size());
 }
 
 void PyOcdParser::sendError(const char * str)
 {
     char buffer[128] = {};
     const int len = snprintf(buffer, 128, "{\"id\": %d, \"status\": 1, \"error\": \"%s\"}\n", mId, str);
-    send(mSocket, buffer, len, 0);
+    mPyOcdIo.send(buffer, len);
 }
 
 void PyOcdParser::startDocument()
@@ -492,6 +493,19 @@ void PyOcdParser::error( const char *message )
     ESP_LOGE(TAG, "%s", message);
 }
 
+void PyOcdParser::parse(char* msg, int len)
+{
+    if (len > 0)
+    {
+        msg[len] = 0;
+        //ESP_LOGW(TAG, "%s", rx_buffer);
+        for(int i = 0; i < len; i++)
+        {
+            mPaser.parse(msg[i]);
+        }
+    }
+}
+
 //-------------------------------------------------------------------
 // PyOcdServer
 //-------------------------------------------------------------------
@@ -501,38 +515,11 @@ PyOcdServer& PyOcdServer::create()
     return server;
 }
 
-PyOcdServer::PyOcdServer() : 
-    ServerSocket(5555)
-{
-
-}
-
-bool PyOcdServer::serverMain(int acceptSocekt)
-{
-    PyOcdParser listener(acceptSocekt);
-    mPaser.setListener(&listener);
-    char rx_buffer[512];
-    while(true)
+PyOcdServer::PyOcdServer() :
+    mPyOcdServerSocket([this](char* rcvMsg, int len)
     {
-        const int len = recv(acceptSocekt, rx_buffer, sizeof(rx_buffer) - 1, 0);
-        rx_buffer[len] = 0;
-        if (len < 0) {
-            ESP_LOGE(TAG, "Error occurred during receiving: errno %d", errno);
-            return false;
-        }
-        else if (len == 0) 
-        {
-            ESP_LOGW(TAG, "Connection closed");
-            break;
-        }
-        else 
-        {
-            //ESP_LOGW(TAG, "%s", rx_buffer);
-            for(int i = 0; i < len; i++)
-            {
-                mPaser.parse(rx_buffer[i]);
-            }
-        }
-    }
-    return true;
+        mPyOcdParser.parse(rcvMsg, len);
+    }),
+    mPyOcdParser(mPyOcdServerSocket)
+{
 }
