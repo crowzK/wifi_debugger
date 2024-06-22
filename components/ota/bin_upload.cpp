@@ -147,7 +147,9 @@ esp_err_t BinUploadHandler::userHandler(httpd_req *req)
             .callback = &rebootTimerCb,
             /* argument specified here will be passed to timer callback function */
             .arg = (void*) nullptr,
-            .name = "one-shot"
+            .dispatch_method = esp_timer_dispatch_t::ESP_TIMER_TASK,
+            .name = "one-shot",
+            .skip_unhandled_events = false,
     };
     esp_timer_handle_t oneshot_timer;
     ESP_ERROR_CHECK(esp_timer_create(&oneshot_timer_args, &oneshot_timer));

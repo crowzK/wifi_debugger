@@ -22,7 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "uart.hpp"
 #include "blocking_queue.hpp"
 #include "network_manager.hpp"
-#include "sntp.h"
+#include "esp_sntp.h"
 #include "sdkconfig.h"
 #include "file_server.hpp"
 #include "ocd.hpp"
@@ -43,9 +43,9 @@ extern "C" void app_main(void)
     ota.update(Ota::getBinFilePath().c_str());
 
     // time zone setting
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    sntp_init();
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    esp_sntp_init();
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
 
