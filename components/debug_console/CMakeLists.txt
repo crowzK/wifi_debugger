@@ -1,4 +1,4 @@
 idf_component_register(SRCS "pyocd_io_console.cpp" "console.cpp" "uart_bypass.cpp" "pyocd_io_console.cpp"
                     INCLUDE_DIRS "include"
                     REQUIRES vfs
-                    PRIV_REQUIRES console esp-idf-cpp io blocking_queue logger storage driver pyocd_probe_server vfs)
+                    PRIV_REQUIRES console esp-idf-cpp io blocking_queue logger storage driver ocd vfs)

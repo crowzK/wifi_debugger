@@ -509,12 +509,6 @@ void PyOcdParser::parse(char* msg, int len)
 //-------------------------------------------------------------------
 // PyOcdServer
 //-------------------------------------------------------------------
-PyOcdServer& PyOcdServer::create()
-{
-    static PyOcdServer server;
-    return server;
-}
-
 PyOcdServer::PyOcdServer() :
     mPyOcdServerSocket([this](char* rcvMsg, int len)
     {
