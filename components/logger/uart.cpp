@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <sstream>
 
 #include "esp_system.h"
+#include "esp_err.h"
 #include "esp_log.h"
 #include "driver/uart.h"
 #include "string.h"
@@ -46,7 +47,7 @@ UartTx::UartTx(int uartPortNum):
 
 bool UartTx::writeStr(const MsgProxy::Msg& msg)
 {
-    uart_write_bytes(cUartNum, msg.str.data(), msg.str.size());
+    uart_write_bytes(static_cast<uart_port_t>(cUartNum), msg.str.data(), msg.str.size());
     return true;
 }
 
@@ -80,7 +81,7 @@ void UartRx::task()
     bool newLine = true;
     while(mRun)
     {
-        const int rxBytes = uart_read_bytes(cUartNum, buffer, RX_BUF_SIZE, 1);
+        const int rxBytes = uart_read_bytes(static_cast<uart_port_t>(cUartNum), buffer, RX_BUF_SIZE, 1);
         if(rxBytes)
         {
             uint32_t strStartIdx = 0;
@@ -164,12 +165,12 @@ void UartService::init(const Config& cfg)
         .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
         .source_clk = UART_SCLK_APB,
     };
-    uart_driver_delete(mConfig.uartNum);
+    uart_driver_delete(static_cast<uart_port_t>(mConfig.uartNum));
 
     // We won't use a buffer for sending data.
-    ESP_ERROR_CHECK(uart_driver_install(mConfig.uartNum, RX_BUF_SIZE * 2, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK(uart_param_config(mConfig.uartNum, &uart_config));
-    ESP_ERROR_CHECK(uart_set_pin(mConfig.uartNum, cTxPin, cRxPin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
+    ESP_ERROR_CHECK(uart_driver_install(static_cast<uart_port_t>(mConfig.uartNum), RX_BUF_SIZE * 2, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(static_cast<uart_port_t>(mConfig.uartNum), &uart_config));
+    ESP_ERROR_CHECK(uart_set_pin(static_cast<uart_port_t>(mConfig.uartNum), cTxPin, cRxPin, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE));
     
     pUartRx.reset();
     pUartTx.reset();
