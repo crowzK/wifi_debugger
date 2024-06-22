@@ -31,7 +31,7 @@ public:
 
 protected:
     PyOcdParser mPyOcdParser;
-    static constexpr uint32_t cBufSize = 512;
+    static constexpr uint32_t cBufSize = 4096;
     char mRxBuff[cBufSize];
 
     uint32_t send(const char* message, uint32_t len) override;
