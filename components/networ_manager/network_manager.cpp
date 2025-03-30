@@ -257,7 +257,7 @@ bool WifiInfoCmd::excute(const std::vector<std::string>& args)
 	esp_netif_t* netif = NULL;
 	for(int i = 0; i < esp_netif_get_nr_of_ifs(); ++i)
 	{
-		netif = esp_netif_next(netif);
+		netif = esp_netif_next_unsafe(netif);
 		esp_netif_ip_info_t ip;
 		ESP_ERROR_CHECK(esp_netif_get_ip_info(netif, &ip));
 		printf("IP: " IPSTR "\n", IP2STR(&ip.ip));

@@ -22,7 +22,9 @@ SWTimer::SWTimer() :
     cTimerArg{
             .callback = &cb,
             .arg = (void*) this,
-            .name = __func__
+            .dispatch_method = esp_timer_dispatch_t::ESP_TIMER_TASK,
+            .name = __func__,
+            .skip_unhandled_events = false
         },
     mTimerHandle(nullptr)
 {

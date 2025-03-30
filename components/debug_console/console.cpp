@@ -23,9 +23,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <iostream>
 #include <sstream>
 #include "esp_vfs_dev.h"
-#include "esp_vfs_usb_serial_jtag.h"
 #include "driver/usb_serial_jtag.h"
+#include "driver/usb_serial_jtag_vfs.h"
 #include "uart_bypass.hpp"
+#include "pyocd_io_console.hpp"
 
 #include "console.hpp"
 //-------------------------------------------------------------------
@@ -85,9 +86,9 @@ bool Console::init()
     setvbuf(stdin, NULL, _IONBF, 0);
 
     /* Minicom, screen, idf_monitor send CR when ENTER key is pressed */
-    esp_vfs_dev_usb_serial_jtag_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
+    usb_serial_jtag_vfs_set_rx_line_endings(ESP_LINE_ENDINGS_CR);
     /* Move the caret to the beginning of the next line on '\n' */
-    esp_vfs_dev_usb_serial_jtag_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
+    usb_serial_jtag_vfs_set_tx_line_endings(ESP_LINE_ENDINGS_CRLF);
 
     fcntl(fileno(stdout), F_SETFL, 0);
     fcntl(fileno(stdin), F_SETFL, 0);
@@ -173,11 +174,13 @@ void Console::task()
     }
 
     /* Tell vfs to use usb-serial-jtag driver */
-    esp_vfs_usb_serial_jtag_use_driver();
+    usb_serial_jtag_vfs_use_driver();
 
     int stdin_fileno = fileno(stdin);
     mpHelp = std::make_unique<Help>();
     mpUartConsole = std::make_unique<UartByPass>();
+    mpPyOcdConsole = std::make_unique<PyOcdIoConsole>();
+
     help();
     std::string cmd;
     while(mRun)

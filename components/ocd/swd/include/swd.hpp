@@ -20,11 +20,32 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #include <stdint.h>
 #include <vector>
+#include "dap.hpp"
+
+// Debug Port Register Addresses
+#define DP_IDCODE                       0x00U   // IDCODE Register (SW Read only)
+#define DP_ABORT                        0x00U   // Abort Register (SW Write only)
+#define DP_CTRL_STAT                    0x04U   // Control & Status
+#define DP_WCR                          0x04U   // Wire Control Register (SW Only)
+#define DP_SELECT                       0x08U   // Select Register (JTAG R/W & SW W)
+#define DP_RESEND                       0x08U   // Resend (SW Read Only)
+#define DP_RDBUFF                       0x0CU   // Read Buffer (Read Only)
 
 //! SWD interface
-class Swd
+class Swd : public Dap
 {
 public:
+    enum class TargetState
+    {
+        eResetHold,
+        eResetRun,
+        eResetProgram,
+        eNoDebug,
+        eDebug,
+        eHalt,
+        eRun,
+    };
+
     enum Response
     {
         Ok          = 1,
@@ -35,6 +56,26 @@ public:
         ParityError = 0x12,
     };
     
+    //! ARM General Purpose Registors
+    struct GPRs
+    {
+        uint32_t r[16];
+        uint32_t xpsr;
+    };
+
+	struct ProgramSysCall
+	{
+		uint32_t breakPoint;		// RAM start + 1 (LR)
+		uint32_t staticBase;		// data section (SB)
+		uint32_t stackPointer;		// initiali stack pointer (SP)
+	};
+
+    enum class FlashAlgoRetType
+    {
+		cBool,      // Ctype return success: 0, fails != 0
+		cPointer
+	};
+
     using Cmd = uint8_t;
     Swd();
     virtual ~Swd() = default;
@@ -64,6 +105,21 @@ public:
 
     bool errorCheck(const char* func, Response res);
 
+    bool readGPR(uint32_t n, uint32_t& regVal);
+    bool writeGPR(uint32_t n, uint32_t regVal);
+    bool writeDebugState(GPRs& gprs);
+
+    bool waitUntilHalted();
+    bool jtagToSwd();
+
+    bool sysCallExec(const ProgramSysCall& sysCallParam, uint32_t entry, uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4, FlashAlgoRetType return_type);
+    bool initDebug();
+    bool setStateByHw(TargetState state);
+    bool setStateBySw(TargetState state);
+    void printPC();
 private:
     uint32_t mCsw;
+    bool reset();
+    bool switchMode(uint16_t mode);
+    bool readIdCode(uint32_t& id);
 };

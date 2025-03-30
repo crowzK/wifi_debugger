@@ -16,31 +16,22 @@ along with this program; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 */
 
-#pragma once
+#include "ocd.hpp"
+#include "pyocd_server.hpp"
 
-#include <memory>
-#include <mutex>
-
-class SdCard;
-
-class FsManager
+Ocd& Ocd::create()
 {
-public:
-    static FsManager& create();
+    static Ocd ocd;
+    return ocd;
+}
 
-    bool mount();
-    bool umount();
-    const char* getMountPoint()
-    {
-        return cMountPoint;
-    }
+Ocd::Ocd() :
+    mpPyOcdServer(std::make_unique<PyOcdServer>())
+{
 
-    bool isMount();
-protected:
-    static const char* cMountPoint;
-    std::recursive_mutex mMutex;
-    std::unique_ptr<SdCard> mpSdcard;
+}
 
-    FsManager();
-    ~FsManager();
-};
+Ocd::~Ocd()
+{
+
+}

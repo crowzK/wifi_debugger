@@ -18,29 +18,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #pragma once
 
-#include <memory>
-#include <mutex>
+#include <stdint.h>
+#include <functional>
 
-class SdCard;
-
-class FsManager
+class PyOcdIo
 {
 public:
-    static FsManager& create();
-
-    bool mount();
-    bool umount();
-    const char* getMountPoint()
+    using RcvCallback = std::function<void(char* rcvMsg, int len)>;
+    PyOcdIo(RcvCallback&& callback) : 
+        mRcvCallback(callback)
     {
-        return cMountPoint;
+        
     }
+    virtual ~PyOcdIo() = default;
+    virtual uint32_t send(const char* message, uint32_t len) = 0;
 
-    bool isMount();
 protected:
-    static const char* cMountPoint;
-    std::recursive_mutex mMutex;
-    std::unique_ptr<SdCard> mpSdcard;
-
-    FsManager();
-    ~FsManager();
+    RcvCallback mRcvCallback;
 };

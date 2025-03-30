@@ -1,8 +1,9 @@
 set(src_dirs 
-    . 
+    libs/socket
+    libs/JSON_Decoder
     pyocd_server/src
-    pyocd_server/libs/socket
-    pyocd_server/libs/JSON_Decoder
+    swd/src
+    src/
 )
 
 set(exclude_srcs 
@@ -13,14 +14,16 @@ set(include_dirs
     .
     pyocd_server/src 
     pyocd_server/include
-    pyocd_server/libs/socket
-    pyocd_server/libs/JSON_Decoder
+    libs/socket
+    libs/JSON_Decoder
+    swd/include
+    include
 )
 
 idf_component_register(
     SRC_DIRS "${src_dirs}"
-    EXCLUDE_SRCS "${exclude_srcs}"
+    EXCLUDE_SRCS "ocd.cpp" "${exclude_srcs}"
     INCLUDE_DIRS "${include_dirs}" 
-    PRIV_REQUIRES driver
+    PRIV_REQUIRES driver storage esp-idf-cpp
 )
 

@@ -18,29 +18,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 #pragma once
 
-#include <memory>
-#include <mutex>
+#include <stdint.h>
+#include "pyocd_io.hpp"
+#include "socket.hpp"
 
-class SdCard;
-
-class FsManager
+class PyOcdIoSocket : public PyOcdIo, public ServerSocket
 {
 public:
-    static FsManager& create();
+    PyOcdIoSocket(RcvCallback&& callback);
+    ~PyOcdIoSocket();
+    uint32_t send(const char* message, uint32_t len) override;
 
-    bool mount();
-    bool umount();
-    const char* getMountPoint()
-    {
-        return cMountPoint;
-    }
-
-    bool isMount();
 protected:
-    static const char* cMountPoint;
-    std::recursive_mutex mMutex;
-    std::unique_ptr<SdCard> mpSdcard;
-
-    FsManager();
-    ~FsManager();
+    int socket;
+    bool serverMain(int acceptSocekt) override;    
 };

@@ -24,9 +24,9 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <functional>
 #include <string>
 #include <memory>
-#include "socket.hpp"
 #include "JSON_Decoder.h"
 #include "swd.hpp"
+#include "pyocd_io_socket.hpp"
 
 class Request
 {
@@ -86,9 +86,10 @@ protected:
 class PyOcdParser : public JsonListener
 {
 public:
-    PyOcdParser(int socket);
+    PyOcdParser(PyOcdIo& io);
     ~PyOcdParser() = default;
 
+    void parse(char* msg, int len);
 protected:
     enum class Key
     {
@@ -97,7 +98,7 @@ protected:
         eArguments,
         eInvalid
     };
-    int mSocket;
+    PyOcdIo& mPyOcdIo;
     int mId;
     Request::Cmd mRequest;
     Key mKey;
@@ -107,6 +108,7 @@ protected:
     std::vector<uint32_t> mArrayArgument;
 
     std::unique_ptr<Swd> pSwd;
+    JSON_Decoder mPaser;
 
     void startDocument() override;
     void endDocument() override;
@@ -126,16 +128,13 @@ protected:
     void sendError(const char * error);
 };
 
-class PyOcdServer : public ServerSocket
+class PyOcdServer
 {
 public:
-    static PyOcdServer& create();
-
-protected:
-    JSON_Decoder mPaser;
-
     PyOcdServer();
     ~PyOcdServer() = default;
 
-    bool serverMain(int acceptSocekt) override;    
+protected:
+    PyOcdIoSocket mPyOcdServerSocket;
+    PyOcdParser mPyOcdParser;
 };

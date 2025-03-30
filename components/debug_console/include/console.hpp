@@ -26,6 +26,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include "task.hpp"
 
 class UartByPass;
+class PyOcdIoConsole;
 
 class Cmd
 {
@@ -59,6 +60,7 @@ protected:
     std::list<Cmd*> mCmdList;
     std::unique_ptr<Help> mpHelp;
     std::unique_ptr<UartByPass> mpUartConsole;
+    std::unique_ptr<PyOcdIoConsole> mpPyOcdConsole;
 
     Console();
     ~Console() = default;
