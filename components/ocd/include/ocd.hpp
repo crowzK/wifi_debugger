@@ -21,6 +21,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 #include <memory>
 
 class PyOcdServer;
+class FlashWriter;
 
 class Ocd
 {
@@ -29,6 +30,7 @@ public:
 
 protected:
     std::unique_ptr<PyOcdServer> mpPyOcdServer;
+    std::unique_ptr<FlashWriter> mpFlashWriter;
 
     Ocd();
     ~Ocd();

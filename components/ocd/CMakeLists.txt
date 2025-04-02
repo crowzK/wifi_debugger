@@ -3,6 +3,7 @@ set(src_dirs
     libs/JSON_Decoder
     pyocd_server/src
     swd/src
+    flash_writer/src
     src/
 )
 
@@ -17,6 +18,9 @@ set(include_dirs
     libs/socket
     libs/JSON_Decoder
     swd/include
+    libs/ELFIO
+    swd/include
+    flash_writer/include
     include
 )
 
