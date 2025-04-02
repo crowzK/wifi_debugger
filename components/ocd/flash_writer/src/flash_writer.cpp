@@ -26,10 +26,10 @@ void FlashWriter::connectTarget(bool connect)
         
         ESP_LOGI(TAG, "%s crate flash algorithm()", __func__);
         mpFlashAlgorithm = std::make_unique<FlashAlgo>(path, FlashAlgo::RamInfo{.ramStartAddr = 0x20000000, .ramSize = 0x2000});
-        ESP_LOGI(TAG, "%s init()", __func__);
-        mpFlashAlgorithm->init(0x8000000, 0, 1);
-        ESP_LOGI(TAG, "%s eraseChip()", __func__);
-        mpFlashAlgorithm->eraseChip();
+        bool result = mpFlashAlgorithm->init(0x8000000, 0, 1);
+        ESP_LOGI(TAG, "%s init() %s", __func__, result ? "Success" : "Fails");
+        result = mpFlashAlgorithm->eraseChip();
+        ESP_LOGI(TAG, "%s eraseChip() %s", __func__, result ? "Success" : "Fails");
         ESP_LOGI(TAG, "%s done()", __func__);
     }
 }
