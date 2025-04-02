@@ -58,6 +58,7 @@ public:
     bool init();
     bool removeProvision();
     bool join(const char *ssid, const char *pass, int timeout_ms);
+    void enableButton();
 
 protected:
     std::recursive_timed_mutex mMutex;

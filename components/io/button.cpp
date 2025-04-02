@@ -24,13 +24,6 @@ Button::Button(gpio_num_t gpio, std::function<void(Event evt)>&& callback) :
     mEnable(false),
     mCb(callback)
 {
-    if(cGpio < GPIO_NUM_MAX)
-    {
-        gpio_reset_pin(cGpio);
-        /* Set the GPIO as a input */
-        gpio_set_direction(cGpio, GPIO_MODE_INPUT);
-        gpio_set_pull_mode(cGpio, gpio_pull_mode_t::GPIO_PULLUP_ONLY);
-    }
 }
 
 Button::~Button()
@@ -52,6 +45,14 @@ void Button::enable(bool en)
     }
     if(mEnable)
     {
+        if(cGpio < GPIO_NUM_MAX)
+        {
+            gpio_reset_pin(cGpio);
+            /* Set the GPIO as a input */
+            gpio_set_direction(cGpio, GPIO_MODE_INPUT);
+            gpio_set_pull_mode(cGpio, gpio_pull_mode_t::GPIO_PULLUP_ONLY);
+        }
+    
         mTimer.start(SWTimer::Mode::ePeriodic, 100, [this]
         {
             bool press = not gpio_get_level(cGpio);

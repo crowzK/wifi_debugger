@@ -48,7 +48,7 @@ extern "C" void app_main(void)
     esp_sntp_init();
     setenv("TZ", "EST5EDT,M3.2.0/2,M11.1.0", 1);
     tzset();
-
+    NetworkManager::create().enableButton();
     IndexHandler::create();
     WsHandler::create();
     Ocd::create();

@@ -146,8 +146,12 @@ bool NetworkManager::init()
 	}
 
 	esp_wifi_set_ps(WIFI_PS_NONE);
-	mPairBut.enable();
 	return true;
+}
+
+void NetworkManager::enableButton()
+{
+	mPairBut.enable();
 }
 
 bool NetworkManager::join(const char* ssid, const char* pass, int timeout_ms)
@@ -179,14 +183,16 @@ NetworkManager& NetworkManager::create()
 	return manager;
 }
 
-NetworkManager::NetworkManager() : mPairBut(cParingPin, [this](Button::Event evt)
+NetworkManager::NetworkManager() : 
+	mPairBut(cParingPin, [this](Button::Event evt)
 	{
 		if(evt == Button::Event::eLongPress)
 		{
 			ESP_LOGI(TAG, "Remove provision info");
 			removeProvision();
 			esp_restart();
-		} })
+		} 
+	})
 {
 #if CONFIG_WIFI_DEBUGGER_V_0_1
 	gpio_reset_pin(gpio_num_t::GPIO_NUM_20);
